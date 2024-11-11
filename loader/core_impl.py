@@ -5,12 +5,12 @@ from typing import Any
 
 
 class CoreImpl:
-    values_shm: DictProxy[str, float]  # shared memory
+    values_shm: DictProxy  # [str, float]  # shared memory
     command_queue: Queue  # command queue
 
     def __init__(
         self,
-        values_shm: DictProxy[str, float],
+        values_shm: DictProxy,  # [str, float],
         command_queue: Queue,
         author: str,
         title: str,
@@ -76,6 +76,10 @@ class CoreImpl:
         Terminaldeki mesajlar, aşağı doğru kayar.
         Eğer yapay zekanızın sonucunu göstermek istiyorsanız bunun yerine `set_state` fonksiyonu kullanabilirsiniz.
         """
+        self._dispatch_command("Mesaj", message)
+
+    def sync_send_message(self, message: str) -> None:
+        """Internal"""
         self._dispatch_command("Mesaj", message)
 
     async def set_state(self, state: str) -> None:

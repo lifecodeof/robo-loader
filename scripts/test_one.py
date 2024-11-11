@@ -9,7 +9,7 @@ if __name__ == "__main__":
 
     setup_sys_path()
 
-    from loader import loader
+    from loader import load
 
     module_name = sys.argv[1]
     module_path = Path(__file__).parent.parent / "modules" / module_name
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         cancel_event.set()
 
     try:
-        loader.load([module_path], cancel, cancel, cancel_event)
+        load.load([module_path], cancel, cancel, cancel_event)
         logger.info(f"Module {module_path.stem} passed successfully")
     except KeyboardInterrupt:
         raise

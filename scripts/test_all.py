@@ -23,7 +23,7 @@ def main():
 
     setup_sys_path()
 
-    from loader import loader
+    from loader import load
 
     for log_file in logs_path.iterdir():
         if log_file.is_file():
@@ -33,7 +33,7 @@ def main():
     
     (logs_path / "passed").mkdir(exist_ok=True)
 
-    module_paths = loader.get_module_paths()
+    module_paths = load.get_module_paths()
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = [
