@@ -13,11 +13,11 @@ from serial import Serial
 
 from loguru import logger
 
-from loader import transport
-import loader.dummy_core as dummy_core
-from loader.core_impl import CoreImpl
-from loader.models import Command, Identifier
-from loader.venv_manager import VenvManager
+from loader.impl import transport
+import loader.impl.dummy_core as dummy_core
+from loader.impl.core_impl import CoreImpl
+from loader.impl.models import Command, Identifier
+from loader.impl.venv_manager import VenvManager
 
 modules_path = Path(__file__).parent.parent / "modules"
 
@@ -73,10 +73,10 @@ def load(
         command_queue = manager.Queue()
         args = dict(values_shm=values, command_queue=command_queue)
 
-        for module_dir in module_paths:
-            VenvManager(module_dir.name).ensure_requirements(
-                module_dir / "requirements.txt"
-            )
+        # for module_dir in module_paths:
+        #     VenvManager(module_dir.name).ensure_requirements(
+        #         module_dir / "requirements.txt"
+        #     )
 
         for module_dir in module_paths:
             process = _ModuleProcess(module_dir, args)
@@ -139,7 +139,8 @@ def load(
                         payload = transport.stringify_command(
                             {"Motor açısı": int(value)}
                         )
-                        serial.write(payload.encode("utf-8"))
+                        if payload:
+                            serial.write(payload.encode("utf-8") + b"\n")
                 case _:
                     raise Exception(f"Unknown command verb: {verb}")
 
@@ -165,7 +166,8 @@ def load(
                     str_values = action[1]
                     logger.info(f"Values: {str_values}")
                     parsed_values = transport.parse_serial_line(str_values)
-                    values.update(parsed_values)
+                    if parsed_values:
+                        values.update(parsed_values)
 
         for p in processes:
             p.terminate()
@@ -176,8 +178,16 @@ def _run_module(module_dir: Path, args: dict):
     author_file = module_dir / "AUTHOR.txt"
 
     module_name = module_dir.name
-    title = title_file.read_text(encoding="utf-8").strip() if title_file.exists() else "Bilinmiyor"
-    author = author_file.read_text(encoding="utf-8").strip() if author_file.exists() else "Bilinmiyor"
+    title = (
+        title_file.read_text(encoding="utf-8").strip()
+        if title_file.exists()
+        else "Bilinmiyor"
+    )
+    author = (
+        author_file.read_text(encoding="utf-8").strip()
+        if author_file.exists()
+        else "Bilinmiyor"
+    )
 
     core_impl = CoreImpl(author=author, title=title, **args)
 

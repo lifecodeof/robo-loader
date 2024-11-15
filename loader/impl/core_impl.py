@@ -3,14 +3,16 @@ from multiprocessing import Queue
 from multiprocessing.managers import DictProxy
 from typing import Any
 
+from loader.impl.ext import get_sound_level
+
 
 class CoreImpl:
-    values_shm: DictProxy  # [str, float]  # shared memory
+    values_shm: DictProxy  # shared memory
     command_queue: Queue  # command queue
 
     def __init__(
         self,
-        values_shm: DictProxy,  # [str, float],
+        values_shm: DictProxy,
         command_queue: Queue,
         author: str,
         title: str,
@@ -30,7 +32,7 @@ class CoreImpl:
 
     async def get_sound_level(self) -> float:  # Kaldırılacak
         """Mikrofonun algıladığı ses seviyesini desibel cinsinden döndürür."""
-        return await self._get_input("Ses seviyesi")
+        return get_sound_level()
 
     async def get_temperature(self) -> float:
         """Sıcaklık sensörünün aldığı sıcaklık değerini santigrat cinsinden döndürür."""

@@ -7,6 +7,8 @@ from rich.progress import Progress, track
 
 def main():
     destination = Path(__file__).parent.parent / "gdrive"
+    destination.mkdir(exist_ok=True)
+
     # for file in track(list(destination.iterdir()), description="Deleting old files"):
     #     file.unlink()
 

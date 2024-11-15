@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
-from multiprocessing import Event, Manager, Process, Queue
+from multiprocessing import Event, Manager, Process
 from multiprocessing.synchronize import Event as EventType
 from pathlib import Path
-import sys
 from typing import TypedDict
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from serial import Serial
+from loader.impl import load
+from loader.impl.models import Identifier
 
 
 class Container(TypedDict):
@@ -26,10 +28,6 @@ class TheProcess(Process):
         self.messages: list = messages
 
     def run(self) -> None:
-        sys.path.append((Path(__file__).parent.parent).as_posix())
-        from loader import load
-        from loader.models import Identifier
-
         def on_message(idf: Identifier, message: str):
             self.messages.append(
                 Container(author=idf["author"], title=idf["title"], content=message)
@@ -43,8 +41,10 @@ class TheProcess(Process):
                 author=idf["author"], title=idf["title"], content=state
             )
 
+        serial = Serial("COM3", baudrate=115200)
+
         load.load(
-            serial=None,
+            serial=serial,
             on_message=on_message,
             on_state_change=on_state_change,
             cancellation_event=self.stop_event,

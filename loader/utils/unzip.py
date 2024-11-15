@@ -7,22 +7,21 @@ from rich import progress
 
 from loguru import logger
 
-target = Path(__file__).parent.parent / "modules"
 
-
-def unzip_with_7z(archive_path: Path) -> None:
-    """
-    Unzips an archive using 7z.
-
-    :param archive_path: Path to the archive file.
-    :param extract_to: Directory where the files should be extracted.
-    """
-
+def unzip_with_7z(archive_path: Path, target: Path) -> None:
     if not os.path.exists(archive_path):
         raise FileNotFoundError(f"The archive {archive_path} does not exist.")
 
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
-        command = ["7z", "x", str(archive_path), f"-o{temp_dir}", "-xr!site-packages"]
+        command = [
+            "7z",
+            "x",
+            str(archive_path),
+            f"-o{temp_dir}",
+            "-xr!site-packages",
+            "-xr!venv",
+            "-xr!.venv",
+        ]
 
         try:
             subprocess.check_call(
@@ -32,11 +31,9 @@ def unzip_with_7z(archive_path: Path) -> None:
             logger.exception("Failed to extract archive")
 
         temp = Path(temp_dir)
-        temp_contents = list(temp.iterdir())
 
-        archive_name = archive_path.stem
         project_dir = infer_project_dir(temp)
-        project_dir.rename(target / archive_name)
+        project_dir.rename(target)
 
 
 def infer_project_dir(input_dir: Path) -> Path:
@@ -56,19 +53,21 @@ def infer_project_dir(input_dir: Path) -> Path:
 
 
 def main():
+    target_dir = Path(__file__).parent.parent / "modules"
+
     gdrive_path = Path(__file__).parent.parent / "gdrive"
     gdrive_files = list(gdrive_path.iterdir())
 
-    target_files = list(target.iterdir())
+    target_files = list(target_dir.iterdir())
 
     for dir in progress.track(target_files, description="Deleting old files"):
         shutil.rmtree(dir)
 
     for file in progress.track(gdrive_files, description="Extracting files"):
-        if (target / file.stem).exists():
+        if (target_dir / file.stem).exists():
             logger.info(f"Skipping {file.stem} as it already exists")
-
-        unzip_with_7z(file)
+        archive_name = file.stem
+        unzip_with_7z(file, target_dir / archive_name)
 
 
 if __name__ == "__main__":
