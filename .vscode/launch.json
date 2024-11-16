@@ -10,6 +10,13 @@
       "request": "launch",
       "program": "main.py",
       "console": "integratedTerminal",
+    },
+    {
+      "name": "tester_entry.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "tester_entry.py",
+      "console": "integratedTerminal",
     }
   ]
 }

@@ -1,1 +1,0 @@
-{"S\u0131cakl\u0131k": 24.8, "Nem": 33.0, "I\u015f\u0131k": 97, "Mesafe": 447, "Nab\u0131z": 108, "Hava Kalitesi": 12, "Gaz": 2, "Titre\u015fim": 957, "Ya\u011fmur": 0, "Yak\u0131nl\u0131k": 447}
