@@ -56,6 +56,13 @@ def get_module_paths() -> list[Path]:
     return [d for d in modules_path.iterdir() if d.is_dir()]
 
 
+def get_module_path(module_name: str) -> Path:
+    path = ROOT_PATH / "modules" / module_name
+    if not path.exists():
+        raise FileNotFoundError(f"Module '{module_name}' does not exist.")
+    return path
+
+
 def load(
     module_paths: list[Path] | None = None,
     on_state_change: Callable[[Identifier, str], None] | None = None,
@@ -64,7 +71,7 @@ def load(
     serial: Serial | None = None,
     ignore_deaths: bool = False,
     venvs_path: Path | None = None,
-    value_queue = None,
+    value_queue=None,
 ):
     venvs_path = venvs_path or ROOT_PATH / "venvs"
     is_cancelled = (

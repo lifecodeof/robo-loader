@@ -17,8 +17,17 @@ numpy = "^2.1.3"
 wxwidgets = "^1.0.5"
 pygame = "^2.6.1"
 sounddevice = "^0.5.1"
+rapidfuzz = "^3.10.1"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+gdrive_dl = "robo_loader.utils.gdrive_dl:main"
+lifecycle = "robo_loader.utils.lifecycle:main"
+test_all = "robo_loader.utils.test_all:main"
+test_one = "robo_loader.utils.test_one:main"
+unzip = "robo_loader.utils.unzip:main"
+test_repl = "robo_loader.utils.test_repl:main"

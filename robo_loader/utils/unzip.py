@@ -16,7 +16,7 @@ def unzip_with_7z(archive_path: Path, target: Path) -> None:
 
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
         command = [
-            str(ROOT_PATH / "bin" / "7-Zip" / "7zG.exe"),
+            str(ROOT_PATH / "bin" / "7-Zip" / "7z.exe"),
             "x",
             str(archive_path),
             f"-o{temp_dir}",
@@ -61,20 +61,18 @@ def infer_project_dir(input_dir: Path) -> Path:
 
 def main():
     target_dir = ROOT_PATH / "modules"
+    if not target_dir.exists():
+        target_dir.mkdir(exist_ok=True)
 
     gdrive_path = ROOT_PATH / "gdrive"
     gdrive_files = list(gdrive_path.iterdir())
 
     target_files = list(target_dir.iterdir())
-
     for dir in progress.track(target_files, description="Deleting old files"):
         shutil.rmtree(dir)
 
     for file in progress.track(gdrive_files, description="Extracting files"):
-        if (target_dir / file.stem).exists():
-            logger.info(f"Skipping {file.stem} as it already exists")
-        archive_name = file.stem
-        unzip_with_7z(file, target_dir / archive_name)
+        unzip_with_7z(file, target_dir / file.stem)
 
 
 if __name__ == "__main__":
