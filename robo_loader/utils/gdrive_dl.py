@@ -1,8 +1,6 @@
-from pathlib import Path
-import shutil
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
-from rich.progress import Progress, track
+from rich.progress import Progress
 from robo_loader import ROOT_PATH
 
 

@@ -1,17 +1,17 @@
+import concurrent.futures
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
-import concurrent.futures
+from pathlib import Path
 
 import rich
-from rich import table
 import rich.live
 import rich.progress
 import rich.status
-from robo_loader.impl import module_loader
+
 from robo_loader import ROOT_PATH
+from robo_loader.impl import module_loader
 
 logs_path = ROOT_PATH / "logs"
 logs_path.mkdir(exist_ok=True)
@@ -26,7 +26,7 @@ def main():
             log_file.unlink()
         else:
             shutil.rmtree(log_file)
-    
+
     (logs_path / "passed").mkdir(exist_ok=True)
 
     module_paths = module_loader.get_module_paths()

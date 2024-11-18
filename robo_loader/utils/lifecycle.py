@@ -1,10 +1,11 @@
 import rich
 import rich.rule
-from gdrive_dl import main as gdrive_dl
-from unzip import main as unzip
-from test_all import main as test_all
+from robo_loader.utils.gdrive_dl import main as gdrive_dl
+from robo_loader.utils.unzip import main as unzip
+from robo_loader.utils.test_all import main as test_all
 
-if __name__ == "__main__":
+
+def main():
     rich.print(rich.rule.Rule("GDRIVE DOWNLOAD"))
     gdrive_dl()
     rich.print(rich.rule.Rule("UNZIP"))
