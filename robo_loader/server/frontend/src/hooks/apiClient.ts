@@ -1,4 +1,4 @@
-import type { Data } from "./types"
+import type { Status } from "../types"
 import { useQuery } from "@tanstack/react-query"
 
 export const useApiQuery = <T = any>(url: string) =>
@@ -12,5 +12,5 @@ export const useApiQuery = <T = any>(url: string) =>
     retry: false,
   })
 
-export const useStatuses = () => useApiQuery<Record<string, Data>>("statuses")
+export const useStatuses = () => useApiQuery<Status[]>("statuses")
 export const useValues = () => useApiQuery<Record<string, number>>("values")

@@ -92,7 +92,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/api/statuses")
 def get_statuses():
-    return dict(statuses)
+    return list(dict(statuses).values())
 
 
 @app.get("/api/messages")
