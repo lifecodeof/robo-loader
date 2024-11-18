@@ -1,16 +1,8 @@
-import { useQuery } from "@tanstack/react-query"
-import type { Data } from "./types"
-import { useLayoutEffect, useRef, useState } from "react"
+import { useRef } from "react"
+import { useStatuses } from "./apiClient"
 
 export function StatusGrid() {
-  const query = useQuery({
-    queryKey: ["statuses"],
-    queryFn: async () => {
-      const response = await fetch("/api/statuses")
-      return (await response.json()) as Record<string, Data>
-    },
-    refetchInterval: 1000,
-  })
+  const query = useStatuses()
 
   return (
     <div className="">

@@ -30,7 +30,7 @@ export const ValuePanel = () => {
 
   const setVariable = (key: string, value: string) => {
     setVariables((prev) => ({ ...prev, [key]: value }))
-  }
+  } 
 
   const mutation = useMutation<void, unknown, typeof variables>({
     mutationFn: async (variables) => {
