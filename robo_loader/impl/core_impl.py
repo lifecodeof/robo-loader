@@ -37,7 +37,15 @@ class CoreImpl:
 
     async def set_motor_angle(self, deg: int) -> None:
         """Servo motorun derecesini ayarlar."""
-        self._dispatch_command("Motor açısı", deg)
+        return await self.set_motor0_angle(deg)
+
+    async def set_motor0_angle(self, deg: int) -> None:
+        """Servo motorun derecesini ayarlar."""
+        self._dispatch_command("Motor0 açısı", deg)
+
+    async def set_motor1_angle(self, deg: int) -> None:
+        """Servo motorun derecesini ayarlar."""
+        self._dispatch_command("Motor1 açısı", deg)
 
     async def is_motor_on(self) -> bool:  # Kaldırılacak
         """Motorun açık olup olmadığını döndürür."""

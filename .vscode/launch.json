@@ -17,6 +17,13 @@
       "request": "launch",
       "program": "main.py",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "test_all",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "robo_loader.utils.test_all",
+      "console": "integratedTerminal"
     }
   ]
 }

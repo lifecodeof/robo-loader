@@ -9,5 +9,5 @@ class Identifier(TypedDict):
 class Command(TypedDict):
     author: str
     title: str
-    verb: Literal["Durum", "Mesaj", "Motor açısı"]
+    verb: Literal["Durum", "Mesaj", "Motor0 açısı", "Motor1 açısı"]
     value: str

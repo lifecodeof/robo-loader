@@ -9,6 +9,8 @@ from robo_loader import ROOT_PATH
 
 from loguru import logger
 
+from robo_loader.utils.fs import rmrf
+
 
 def unzip_with_7z(archive_path: Path, target: Path) -> None:
     if not os.path.exists(archive_path):
@@ -33,7 +35,7 @@ def unzip_with_7z(archive_path: Path, target: Path) -> None:
 
         if target.exists():
             if target.is_dir():
-                shutil.rmtree(target)
+                rmrf(target)
             else:
                 target.unlink()
 
@@ -69,7 +71,7 @@ def main():
 
     target_files = list(target_dir.iterdir())
     for dir in progress.track(target_files, description="Deleting old files"):
-        shutil.rmtree(dir)
+        rmrf(dir)
 
     for file in progress.track(gdrive_files, description="Extracting files"):
         unzip_with_7z(file, target_dir / file.stem)

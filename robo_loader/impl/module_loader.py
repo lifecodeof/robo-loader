@@ -23,8 +23,7 @@ from robo_loader import ROOT_PATH
 
 class _ModuleProcess(Process):
     def __init__(self, module_path: Path, core_args: dict, venvs_path: Path):
-        super().__init__()
-        self.daemon = True
+        super().__init__(daemon=True)
         self.module_path = module_path
         self.core_args = core_args
         self.venvs_path = venvs_path
@@ -142,6 +141,13 @@ def load(
 
                 sleep(0.01)
 
+        transport_command = transport.TransportCommand(
+            {
+                "Motor0 açısı": 0,
+                "Motor1 açısı": 0,
+            }
+        )
+
         def handle_command(command: Command):
             author = command["author"]
             title = command["title"]
@@ -162,11 +168,10 @@ def load(
                 case "Mesaj":
                     if on_message is not None:
                         on_message(identifier, value)
-                case "Motor açısı":
+                case "Motor0 açısı" | "Motor1 açısı":
                     if serial is not None:
-                        payload = transport.stringify_command(
-                            {"Motor açısı": int(value)}
-                        )
+                        transport_command[verb] = int(value)
+                        payload = transport.stringify_command(transport_command)
                         if payload:
                             serial.write(payload.encode("utf-8") + b"\n")
                 case _:
@@ -212,6 +217,9 @@ def load(
 
         for p in processes:
             p.terminate()
+
+        for p in processes:
+            p.join()
 
 
 def _run_module(module_dir: Path, args: dict, venvs_path: Path):

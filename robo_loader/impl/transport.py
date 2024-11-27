@@ -23,7 +23,8 @@ TrasportValues = TypedDict(
 TransportCommand = TypedDict(
     "TransportCommand",
     {
-        "Motor açısı": int,
+        "Motor0 açısı": int,
+        "Motor1 açısı": int,
     },
 )
 
@@ -55,7 +56,8 @@ def parse_serial_line(line: str) -> TrasportValues | None:
 
 def stringify_command(command: TransportCommand) -> str | None:
     try:
-        motor_angle = command.get("Motor açısı", 0)
-        return f"{motor_angle},{motor_angle}"
+        motor0_angle = command.get("Motor0 açısı", 0)
+        motor1_angle = command.get("Motor1 açısı", 0)
+        return f"{motor0_angle},{motor1_angle}"
     except:
         ...

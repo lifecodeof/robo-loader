@@ -12,3 +12,6 @@ def main():
     unzip()
     rich.print(rich.rule.Rule("TEST ALL"))
     test_all()
+
+if __name__ == "__main__":
+    main()

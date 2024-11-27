@@ -14,6 +14,8 @@ from robo_loader import ROOT_PATH
 #     "sklearn": "scikit-learn",
 # }
 
+class RequirementsError(Exception):
+    pass
 
 class VenvManager:
     venvs_path: Path
@@ -42,29 +44,9 @@ class VenvManager:
         installed_cache_file = self.venvs_path / self.venv_name / ".installed"
         if (
             installed_cache_file.exists()
-            and installed_cache_file.read_text() == requirements_path.read_text()
+            and installed_cache_file.read_bytes() == requirements_path.read_bytes()
         ):
             return
-
-        # requirements = [
-        #     req.strip() for req in requirements_path.read_text().splitlines()
-        # ]
-
-        # has_made_changes = False
-        # for false_req, correct_req in REQUIREMENT_CORRECTIONS.items():
-        #     if false_req in requirements:
-        #         requirements.remove(false_req)
-        #         has_made_changes = True
-        #         if correct_req is not None:
-        #             requirements.append(correct_req)
-
-        # for author, extra_reqs in EXTRA_REQUIREMENTS.items():
-        #     if author in self.venv_name:
-        #         requirements.extend(extra_reqs)
-        #         has_made_changes = True
-
-        # if has_made_changes:
-        #     requirements_path.write_text("\n".join(requirements))
 
         interpreter_path = self.get_interpreter_path()
         logger.info(f"Installing requirements for venv: {self.venv_name}")
@@ -83,11 +65,11 @@ class VenvManager:
 
         if pip.returncode != 0:
             stderr = pip.stderr.decode("utf-8")
-            raise Exception(
+            raise RequirementsError(
                 f"Failed to install requirements for venv: {self.venv_name}\n{stderr}"
             )
 
-        installed_cache_file.write_text(requirements_path.read_text())
+        installed_cache_file.write_bytes(requirements_path.read_bytes())
         logger.info(f"Installed requirements for venv: {self.venv_name}")
 
     def activate(self):

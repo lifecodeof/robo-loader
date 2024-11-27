@@ -20,6 +20,9 @@ sounddevice = "^0.5.1"
 rapidfuzz = "^3.10.1"
 
 
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -28,6 +31,7 @@ build-backend = "poetry.core.masonry.api"
 gdrive_dl = "robo_loader.utils.gdrive_dl:main"
 lifecycle = "robo_loader.utils.lifecycle:main"
 test_all = "robo_loader.utils.test_all:main"
+test_all_report = "robo_loader.utils.test_all:report_results"
 test_one = "robo_loader.utils.test_one:main"
 unzip = "robo_loader.utils.unzip:main"
 test_repl = "robo_loader.utils.test_repl:main"
