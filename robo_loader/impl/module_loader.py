@@ -9,6 +9,7 @@ from pathlib import Path
 from queue import Empty
 from time import sleep
 from typing import Any, Callable, TextIO
+import warnings
 from serial import Serial
 
 from loguru import logger
@@ -22,18 +23,64 @@ from robo_loader import ROOT_PATH
 
 
 class _ModuleProcess(Process):
-    def __init__(self, module_path: Path, core_args: dict, venvs_path: Path):
+    def __init__(
+        self,
+        module_path: Path,
+        core_args: dict,
+        venvs_path: Path,
+        log_path: Path | None,
+    ):
         super().__init__(daemon=True)
         self.module_path = module_path
         self.core_args = core_args
         self.venvs_path = venvs_path
+        self.log_path = log_path
 
     @property
     def name(self) -> str:
         return self.module_path.name
 
     def run(self):
-        _run_module(self.module_path, self.core_args, self.venvs_path)
+        if self.log_path is not None:
+
+            def _redirect_stream(stream_name, target_file):
+                """Redirect a C-level stream like stdout or stderr."""
+                # Get the file descriptor of the target file
+                file_descriptor = os.open(
+                    target_file,
+                    os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                )
+                # Redirect the C-level stream to the file
+                os.dup2(file_descriptor, getattr(sys, stream_name).fileno())
+                # Close the file descriptor, it is now owned by the process
+                os.close(file_descriptor)
+
+            warnings.filterwarnings("ignore")
+            logger.remove(0)
+            logger.add(self.log_path)
+
+            _redirect_stream(
+                "stdout", self.log_path.with_stem(self.log_path.stem + ".stdout")
+            )
+
+            _redirect_stream(
+                "stderr", self.log_path.with_stem(self.log_path.stem + ".stderr")
+            )
+
+        try:
+            _run_module(
+                self.module_path,
+                self.core_args,
+                self.venvs_path,
+                self.log_path,
+            )
+        finally:
+            if self.log_path is not None:
+                sys.stdout.flush()
+                sys.stderr.flush()
+
+                sys.stdout.close()
+                sys.stderr.close()
 
 
 class _ActionType(enum.Enum):
@@ -71,6 +118,7 @@ def load(
     ignore_deaths: bool = False,
     venvs_path: Path | None = None,
     value_queue=None,
+    log_path: Path | None = None,
 ):
     venvs_path = venvs_path or ROOT_PATH / "venvs"
     is_cancelled = (
@@ -81,7 +129,9 @@ def load(
         module_paths = get_module_paths()
 
     processes: list[Process] = []
-    with Manager() as manager:
+    manager_ctxman = Manager()
+    try:
+        manager = manager_ctxman.__enter__()
         values = manager.dict()
 
         command_queue = manager.Queue()
@@ -93,7 +143,7 @@ def load(
         #     )
 
         for module_dir in module_paths:
-            process = _ModuleProcess(module_dir, args, venvs_path)
+            process = _ModuleProcess(module_dir, args, venvs_path, log_path)
             processes.append(process)
             process.start()
 
@@ -214,6 +264,8 @@ def load(
 
             if should_break:
                 break
+    finally:
+        manager.__exit__(None, None, None)
 
         for p in processes:
             p.terminate()
@@ -222,7 +274,12 @@ def load(
             p.join()
 
 
-def _run_module(module_dir: Path, args: dict, venvs_path: Path):
+def _run_module(
+    module_dir: Path,
+    args: dict,
+    venvs_path: Path,
+    log_path: Path | None,
+):
     title_file = module_dir / "TITLE.txt"
     author_file = module_dir / "AUTHOR.txt"
 
