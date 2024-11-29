@@ -1,17 +1,14 @@
 import multiprocessing
 import random
 import threading
-from unittest import mock
+from multiprocessing import Event, Queue
+from multiprocessing.synchronize import Event as EventType
 
 from loguru import logger
-from robo_loader.impl.core_impl import CoreImpl
+
+from robo_loader.impl.module_loader import ModuleLoader
 from robo_loader.impl.venv_manager import RequirementsError, VenvManager
 from robo_loader.testing.test_model import TestContext, Tests
-from multiprocessing import Event
-
-from loguru import logger
-
-from robo_loader.impl import module_loader
 
 tests = Tests()
 
@@ -86,6 +83,45 @@ def test_requirements_installable(ctx: TestContext):
         assert False, "requirements.txt hatalı."
 
 
+@tests(
+    depends=[
+        test_main_py_has_main_fn,
+        test_requirements_installable,
+    ]
+)
+def test_load_and_state_change(ctx: TestContext):
+    """Modül yüklenebilmeli ve durum belirtmeli"""
+    cancel_event = Event()
+    state_changed = False
+
+    def handle_state_change(*_, **__):
+        nonlocal state_changed
+        state_changed = True
+        cancel_event.set()
+        logger.info("State changed")
+
+    load_module(ctx, cancel_event, dict(on_state_change=handle_state_change))
+    assert (
+        state_changed
+    ), "Modül durum belirmedi/değiştirmedi. [core.set_state() çağrılmadı]"
+
+
+@tests(depends=[test_load_and_state_change])
+def test_play_sound_called(ctx: TestContext):
+    """Modül ses çalmalı"""
+    cancel_event = Event()
+    sound_played = False
+
+    def handle_event(_, event_name, _v):
+        nonlocal sound_played
+        if event_name == "play_sound":
+            sound_played = True
+            cancel_event.set()
+
+    load_module(ctx, cancel_event, dict(on_event=handle_event))
+    assert sound_played, "Modül ses çalmadı. [core.play_sound() çağrılmadı]"
+
+
 class RandomValueFeederThread(threading.Thread):
     LABELS = [
         "Sıcaklık",
@@ -100,9 +136,7 @@ class RandomValueFeederThread(threading.Thread):
         "Yakınlık",
     ]
 
-    def __init__(
-        self, cancel_event: threading.Event, value_queue: "multiprocessing.Queue"
-    ):
+    def __init__(self, cancel_event: EventType, value_queue: Queue):
         super().__init__()
         self.cancel_event = cancel_event
         self.value_queue = value_queue
@@ -118,59 +152,37 @@ class RandomValueFeederThread(threading.Thread):
             time.sleep(10)
 
 
-@tests(
-    depends=[
-        test_main_py_has_main_fn,
-        test_requirements_installable,
-    ]
-)
-def test_load_and_state_change(ctx: TestContext):
-    """Modül yüklenebilmeli ve durum belirtmeli."""
-    logger.info(f"Loading module {ctx.module_path.name}")
-    cancel_event = Event()
-    state_changed = False
-    timeout_reached = False
-
-    def handle_state_change(*_, **__):
-        nonlocal state_changed
-        state_changed = True
-        cancel_event.set()
-        logger.info("State changed")
-
-    def handle_timeout():
-        nonlocal timeout_reached
-        if cancel_event.is_set():
-            return
-
-        logger.error("Module loading timed out after 1 minutes")
-        timeout_reached = True
-        cancel_event.set()
-
-    timeout_thread = threading.Timer(60, handle_timeout)
-    timeout_thread.start()
-
+def load_module(
+    ctx: TestContext,
+    cancel_event: EventType,
+    loader_kwargs: dict,
+):
     try:
-        module_loader.load(
+
+        def handle_timeout():
+            if cancel_event.is_set():
+                return
+
+            logger.error("Module loaded but expectation timed out after 2 minutes")
+            cancel_event.set()
+
+        timeout_thread = threading.Timer(120, handle_timeout)
+        timeout_thread.start()
+
+        value_queue = Queue()
+        feeder_thread = RandomValueFeederThread(cancel_event, value_queue)
+        feeder_thread.start()
+
+        ModuleLoader(
             module_paths=[ctx.module_path],
-            on_state_change=handle_state_change,
             on_message=lambda _, message: logger.warning(f"MESSAGE: {message}"),
             cancellation_event=cancel_event,
             log_path=ctx.log_file,
-        )
+            value_queue=value_queue,
+            **loader_kwargs,
+        ).load()
         timeout_thread.cancel()
-
-        if state_changed:
-            return
-
-        if timeout_reached:
-            assert (
-                False
-            ), "core.set_state() çağrılmadığı için zaman aşımı gerçekleşti (1 dakika)."
-
-        assert (
-            False
-        ), "Modül durum belirmedi/değiştirmedi. [core.set_state() çağrılmadı]"
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, AssertionError):
         cancel_event.set()
         raise
     except BaseException:
@@ -178,57 +190,3 @@ def test_load_and_state_change(ctx: TestContext):
             f"An error occurred while loading the module: {ctx.module_path.name}"
         )
         assert False, "Modül yüklenirken hata oluştu. (log dosyalarını kontrol edin)"
-
-
-@tests() # @tests(depends=[test_load_and_state_change])
-def test_sound(ctx: TestContext):
-    """Modül ses çalmalı."""
-    logger.info(f"Loading module {ctx.module_path.name}")
-    cancel_event = Event()
-    timeout_reached = False
-
-    def handle_timeout():
-        nonlocal timeout_reached
-        if cancel_event.is_set():
-            return
-
-        logger.error("Module loading timed out after 1 minutes")
-        timeout_reached = True
-        cancel_event.set()
-
-    timeout_thread = threading.Timer(60, handle_timeout)
-    timeout_thread.start()
-
-    try:
-        patches = module_loader.load(
-            module_paths=[ctx.module_path],
-            on_message=lambda _, message: logger.warning(f"MESSAGE: {message}"),
-            cancellation_event=cancel_event,
-            log_path=ctx.log_file,
-            patches=[dict(target="robo_loader.impl.core_impl.CoreImpl.play_sound")],
-        )
-        timeout_thread.cancel()
-
-        if timeout_reached:
-            assert (
-                False
-            ), "core.play_sound() çağrılmadığı için zaman aşımı gerçekleşti (1 dakika)."
-
-        assert (
-            play_sound.call_count
-        ), "Modül ses çalmadı. [core.play_sound() çağrılmadı]"
-
-        for (sound_path,) in play_sound.call_args_list:
-            exc = CoreImpl.validate_sound_path(ctx.module_path, sound_path)
-            assert not exc, f"Geçersiz ses dosyası ({sound_path}) çalındı: {exc!r}"
-
-    except KeyboardInterrupt:
-        cancel_event.set()
-        raise
-    except BaseException:
-        logger.exception(
-            f"An error occurred while loading the module: {ctx.module_path.name}"
-        )
-        assert False, "Modül yüklenirken hata oluştu. (log dosyalarını kontrol edin)"
-
-tests.tests.reverse()

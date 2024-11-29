@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 
 class Identifier(TypedDict):
@@ -9,5 +9,5 @@ class Identifier(TypedDict):
 class Command(TypedDict):
     author: str
     title: str
-    verb: Literal["Durum", "Mesaj", "Motor0 açısı", "Motor1 açısı"]
-    value: str
+    verb: Literal["Durum", "Mesaj", "Motor0 açısı", "Motor1 açısı", "event"]
+    value: Any

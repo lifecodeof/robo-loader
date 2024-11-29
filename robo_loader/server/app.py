@@ -8,8 +8,8 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from serial import Serial
-from robo_loader.impl import module_loader
 from robo_loader.impl.models import Identifier
+from robo_loader.impl.module_loader import ModuleLoader
 
 
 class Container(TypedDict):
@@ -51,7 +51,7 @@ class TheProcess(Process):
         logger.info(f"Using serial: {should_use_serial}")
         serial = Serial("COM3", baudrate=115200) if should_use_serial else None
 
-        module_loader.load(
+        ModuleLoader(
             serial=serial,
             on_message=on_message,
             on_state_change=on_state_change,
@@ -59,7 +59,7 @@ class TheProcess(Process):
             ignore_deaths=True,
             value_queue=self.value_queue,
             **self.state.get("loader_args", {}),
-        )
+        ).load()
 
 
 @asynccontextmanager

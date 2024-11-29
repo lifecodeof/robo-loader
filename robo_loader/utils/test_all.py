@@ -13,7 +13,7 @@ from robo_loader import ROOT_PATH
 from robo_loader.impl import module_loader
 from robo_loader.testing.runner import TestRunner, TestResults, TestStatus
 from robo_loader.utils.fs import rmrf
-
+from rich.markup import escape as e
 
 logs_path = ROOT_PATH / "logs"
 Results = dict[Path, TestResults]
@@ -61,19 +61,19 @@ def report_results(results: Results):
             result.status is TestStatus.PASSED for result in test_results.values()
         )
         if is_all_success:
-            console.print(f"[green]✓ {module_path.stem}")
+            console.print(f"[green]✓ {e(module_path.stem)}")
             continue
 
-        console.print(f"[red]✗ {module_path.stem}")
+        console.print(f"[red]✗ {e(module_path.stem)}")
         for test, result in test_results.items():
             test_repr = f"{test.name} ({test.description})"
             match result.status:
                 case TestStatus.PASSED:
-                    console.print(f"[green]  ✓ {test_repr}")
+                    console.print(f"[green]  ✓ {e(test_repr)}")
                 case TestStatus.NOT_RUN:
-                    console.print(f"[yellow]  ! {test_repr}: {result.message}")
+                    console.print(f"[yellow]  ! {e(test_repr)}: {e(result.message)}")
                 case TestStatus.FAILED:
-                    console.print(f"[red]  ✗ {test_repr}: {result.message}")
+                    console.print(f"[red]  ✗ {e(test_repr)}: {e(result.message)}")
 
     console.save_html(
         str(logs_path / "test_results.html"), theme=rich.terminal_theme.MONOKAI

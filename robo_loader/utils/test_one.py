@@ -4,7 +4,7 @@ from multiprocessing import Event
 from loguru import logger
 
 from robo_loader import ROOT_PATH
-from robo_loader.impl import module_loader
+from robo_loader.impl.module_loader import ModuleLoader
 
 
 def main(module_name: str | None = None):
@@ -28,12 +28,12 @@ def main(module_name: str | None = None):
         logger.warning(f"MESSAGE USED: {message}")
 
     try:
-        module_loader.load(
+        ModuleLoader(
             module_paths=[module_path],
             on_state_change=on_state_change,
             on_message=on_message,
             cancellation_event=cancel_event,
-        )
+        ).load()
 
         if state_changed:
             logger.info(f"Module {module_path.stem} passed successfully")

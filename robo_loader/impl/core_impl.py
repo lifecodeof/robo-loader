@@ -123,7 +123,7 @@ class CoreImpl:
         value = self.values_shm.get(label, 0)
         return value
 
-    def _dispatch_command(self, verb: str, value: str | int) -> None:
+    def _dispatch_command(self, verb: str, value: Any) -> None:
         self.command_queue.put(
             dict(
                 author=self.author,
@@ -132,6 +132,9 @@ class CoreImpl:
                 value=value,
             )
         )
+
+    def _dispatch_event(self, event_name: str, value: Any) -> None:
+        self._dispatch_command("event", (event_name, value))
 
     async def turn_on_motor(self) -> None:  # Kaldırılacak (1 kişi kullanıyor)
         """Motoru açar. (for compatibility)
@@ -181,6 +184,8 @@ class CoreImpl:
         exc = self.validate_sound_path(self.root_path, sound_path)
         if exc:
             raise exc
+
+        self._dispatch_event("play_sound", Path(sound_path).absolute())
 
         pygame.mixer.music.load(str(sound_path))
         pygame.mixer.music.play()
