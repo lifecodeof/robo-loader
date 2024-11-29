@@ -7,6 +7,7 @@ from typing import Any
 
 
 from robo_loader.impl.ext import get_sound_level
+from robo_loader.impl.models import Command, CommandVerb
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
@@ -14,12 +15,6 @@ import pygame
 
 
 class CoreImpl:
-    values_shm: DictProxy  # shared memory
-    command_queue: Queue  # command queue
-    author: str
-    title: str
-    root_path: Path
-
     def __init__(
         self,
         values_shm: DictProxy,
@@ -27,12 +22,15 @@ class CoreImpl:
         author: str,
         title: str,
         root_path: Path,
+        module_name: str,
     ) -> None:
         self.values_shm = values_shm
         self.command_queue = command_queue
         self.author = author
         self.title = title
         self.root_path = root_path
+        self.module_name = module_name
+
         pygame.mixer.init()
 
     async def set_motor_angle(self, deg: int) -> None:
@@ -123,9 +121,10 @@ class CoreImpl:
         value = self.values_shm.get(label, 0)
         return value
 
-    def _dispatch_command(self, verb: str, value: Any) -> None:
+    def _dispatch_command(self, verb: CommandVerb, value: Any) -> None:
         self.command_queue.put(
-            dict(
+            Command(
+                module_name=self.module_name,
                 author=self.author,
                 title=self.title,
                 verb=verb,

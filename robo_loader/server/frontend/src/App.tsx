@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useState } from "react"
-import SingleStatusDisplay from "./SingleStatusDisplay"
+import SingleModuleDisplay from "./SingleModuleDisplay"
 import StatusSelector from "./StatusSelector"
 import ValueDisplay from "./ValueDisplay"
+import RunningModules from "./RunningModules"
 
 function App() {
   const [queryClient] = useState(() => new QueryClient())
@@ -12,6 +13,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ValueDisplay />
         <StatusSelector />
+        <RunningModules />
       </QueryClientProvider>
     </main>
   )

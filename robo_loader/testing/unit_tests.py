@@ -98,7 +98,6 @@ def test_load_and_state_change(ctx: TestContext):
         nonlocal state_changed
         state_changed = True
         cancel_event.set()
-        logger.info("State changed")
 
     load_module(ctx, cancel_event, dict(on_state_change=handle_state_change))
     assert (
@@ -106,15 +105,39 @@ def test_load_and_state_change(ctx: TestContext):
     ), "Modül durum belirmedi/değiştirmedi. [core.set_state() çağrılmadı]"
 
 
+@tests(
+    depends=[
+        test_main_py_has_main_fn,
+        test_requirements_installable,
+    ]
+)
+def test_send_message_not_called(ctx: TestContext):
+    """Mesajlar artık görünmeyecek"""
+    cancel_event = Event()
+    message_sent = False
+
+    def handle_message(*_, **__):
+        nonlocal message_sent
+        message_sent = True
+        cancel_event.set()
+
+    load_module(ctx, cancel_event, dict(on_message=handle_message), 30)
+    assert (
+        not message_sent
+    ), "Mesajlar artık görünmeyecek bunun yerine core.set_state() kullanın."
+
+
 @tests(depends=[test_load_and_state_change])
 def test_play_sound_called(ctx: TestContext):
     """Modül ses çalmalı"""
+    logger.info("Testing if the module plays a sound")
     cancel_event = Event()
     sound_played = False
 
     def handle_event(_, event_name, _v):
         nonlocal sound_played
         if event_name == "play_sound":
+            logger.info("Sound played")
             sound_played = True
             cancel_event.set()
 
@@ -136,10 +159,10 @@ class RandomValueFeederThread(threading.Thread):
         "Yakınlık",
     ]
 
-    def __init__(self, cancel_event: EventType, value_queue: Queue):
+    def __init__(self, cancel_event: EventType, values_queue: Queue):
         super().__init__()
         self.cancel_event = cancel_event
-        self.value_queue = value_queue
+        self.values_queue = values_queue
 
     def run(self):
         import time
@@ -148,7 +171,7 @@ class RandomValueFeederThread(threading.Thread):
             values = {}
             for label in RandomValueFeederThread.LABELS:
                 values[label] = random.randint(0, 500)
-            self.value_queue.put(values)
+            self.values_queue.put(values)
             time.sleep(10)
 
 
@@ -156,6 +179,7 @@ def load_module(
     ctx: TestContext,
     cancel_event: EventType,
     loader_kwargs: dict,
+    timeout_seconds: int = 120,
 ):
     try:
 
@@ -166,19 +190,18 @@ def load_module(
             logger.error("Module loaded but expectation timed out after 2 minutes")
             cancel_event.set()
 
-        timeout_thread = threading.Timer(120, handle_timeout)
+        timeout_thread = threading.Timer(timeout_seconds, handle_timeout)
         timeout_thread.start()
 
-        value_queue = Queue()
-        feeder_thread = RandomValueFeederThread(cancel_event, value_queue)
+        values_queue = Queue()
+        feeder_thread = RandomValueFeederThread(cancel_event, values_queue)
         feeder_thread.start()
 
         ModuleLoader(
             module_paths=[ctx.module_path],
-            on_message=lambda _, message: logger.warning(f"MESSAGE: {message}"),
             cancellation_event=cancel_event,
             log_path=ctx.log_file,
-            value_queue=value_queue,
+            values_queue=values_queue,
             **loader_kwargs,
         ).load()
         timeout_thread.cancel()

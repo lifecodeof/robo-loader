@@ -1,10 +1,12 @@
 import asyncio
+from enum import Enum
 import importlib.util
 from multiprocessing.managers import ListProxy
 import os
 import sys
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 from pathlib import Path
+from typing import TypeAlias
 import warnings
 
 from loguru import logger
@@ -14,6 +16,36 @@ from robo_loader.impl.core_impl import CoreImpl
 from robo_loader.impl.venv_manager import VenvManager
 
 
+class ModuleInfo(Enum):
+    STARTING = 0
+    INSTALLING_REQS = 1
+    LOADING = 2
+    RUNNING = 3
+    STOPPED = 4
+    ERRORED = 5
+
+    @staticmethod
+    def to_str(info: "ModuleInfo") -> str:
+        match info:
+            case ModuleInfo.STARTING:
+                return "Başlatılıyor"
+            case ModuleInfo.INSTALLING_REQS:
+                return "Gereksinimler kuruluyor"
+            case ModuleInfo.LOADING:
+                return "Yükleniyor"
+            case ModuleInfo.RUNNING:
+                return "Çalışıyor"
+            case ModuleInfo.STOPPED:
+                return "Durduruldu"
+            case ModuleInfo.ERRORED:
+                return "Hata"
+
+        return "Bilinmiyor"
+
+
+InfoQueue: TypeAlias = "Queue[tuple[str, ModuleInfo]]"
+
+
 class ModuleProcess(Process):
     def __init__(
         self,
@@ -21,12 +53,14 @@ class ModuleProcess(Process):
         core_args: dict,
         venvs_path: Path,
         log_path: Path | None,
+        info_queue: "InfoQueue | None",
     ):
         super().__init__(daemon=True, name=f"ModuleProcess-{module_path.name}")
         self.module_path = module_path
         self.core_args = core_args
         self.venvs_path = venvs_path
         self.log_path = log_path
+        self.info_queue = info_queue
 
     @property
     def name(self) -> str:
@@ -75,6 +109,10 @@ class ModuleProcess(Process):
                 "stderr", self.log_path.with_stem(self.log_path.stem + ".stderr")
             )
 
+    def _report_info(self, info: ModuleInfo):
+        if self.info_queue is not None:
+            self.info_queue.put_nowait((self.module_path.name, info))
+
     def _run_module(
         self,
         module_dir: Path,
@@ -96,13 +134,22 @@ class ModuleProcess(Process):
             else "Bilinmiyor"
         )
 
-        core_impl = CoreImpl(author=author, title=title, root_path=module_dir, **args)
+        core_impl = CoreImpl(
+            module_name=module_name,
+            author=author,
+            title=title,
+            root_path=module_dir,
+            **args,
+        )
 
         requirements_file = module_dir / "requirements.txt"
         venv_manager = VenvManager(module_name, venvs_path)
+
+        self._report_info(ModuleInfo.INSTALLING_REQS)
         venv_manager.ensure_requirements(requirements_file)
         venv_manager.activate()
 
+        self._report_info(ModuleInfo.LOADING)
         sys.path.append(str(module_dir.absolute()))
         dummy_core.actual_impl = core_impl
         sys.modules["core"] = dummy_core
@@ -132,8 +179,11 @@ class ModuleProcess(Process):
         if (not hasattr(module, "main")) or (not callable(module.main)):
             raise Exception(f"Module '{module_dir.name}' has no 'main' function.")
 
+        self._report_info(ModuleInfo.RUNNING)
         try:
             asyncio.run(module.main(core_impl))  # type: ignore
+            self._report_info(ModuleInfo.STOPPED)
         except:
             logger.exception(f"Module '{module_dir.name}' has thrown an exception.")
+            self._report_info(ModuleInfo.ERRORED)
             raise

@@ -40,7 +40,7 @@ def main():
     ).GetList()
 
     new_files: list[str] = []
-    for file in track(file_list, "[green]Downloading files...", len(file_list)):
+    for file in track(list(file_list), "[green]Downloading files..."):
         file_name = file["title"]
         local_path = destination / file_name
         if local_path.exists():
@@ -58,6 +58,15 @@ def main():
         rich.print(f"[green]Downloaded {new_files!r} new files")
     else:
         rich.print(f"[yellow]No new files to download")
+
+    gdrive_filenames = [file["title"] for file in file_list]
+    for file in track(
+        list(destination.iterdir()),
+        "[green]Deleting old files...",
+    ):
+        if file.name not in gdrive_filenames:
+            file.unlink()
+            rich.print(f"[red]Deleted {file.name!r}")
 
 
 if __name__ == "__main__":

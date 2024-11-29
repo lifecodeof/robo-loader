@@ -4,6 +4,7 @@ from multiprocessing import Manager, Queue
 from multiprocessing.synchronize import Event
 from pathlib import Path
 from queue import Empty
+import queue
 from time import sleep
 from typing import Any, Callable, cast
 from serial import Serial
@@ -12,7 +13,7 @@ from loguru import logger
 
 from robo_loader.impl import transport
 from robo_loader.impl.models import Command, Identifier
-from robo_loader.impl.module_process import ModuleProcess
+from robo_loader.impl.module_process import InfoQueue, ModuleInfo, ModuleProcess
 from robo_loader import ROOT_PATH
 
 
@@ -53,8 +54,11 @@ class ModuleLoader:
         serial: Serial | None = None,
         ignore_deaths: bool = False,
         venvs_path: Path | None = None,
-        value_queue: "Queue | None" = None,
+        values_queue: "Queue[dict] | None" = None,
         log_path: Path | None = None,
+        serial_in: "queue.Queue[bytes] | None" = None,
+        serial_out: "queue.Queue[bytes] | None" = None,
+        info_queue: "InfoQueue | None" = None,
     ) -> None:
         self.module_paths = module_paths or get_module_paths()
         self.on_state_change = on_state_change
@@ -64,8 +68,11 @@ class ModuleLoader:
         self.serial = serial
         self.ignore_deaths = ignore_deaths
         self.venvs_path = venvs_path or ROOT_PATH / "venvs"
-        self.value_queue = value_queue
+        self.values_queue = values_queue
         self.log_path = log_path
+        self.serial_in = serial_in
+        self.serial_out = serial_out
+        self.info_queue = info_queue
 
         self._last_transport_command = transport.TransportCommand(
             {
@@ -80,6 +87,33 @@ class ModuleLoader:
     def _is_cancelled(self):
         return self.cancellation_event is not None and self.cancellation_event.is_set()
 
+    def serial_writable(self):
+        return self.serial is not None or self.serial_in is not None
+
+    def serial_write(self, data: bytes):
+        if self.serial is not None:
+            self.serial.write(data)
+        if self.serial_out is not None:
+            self.serial_out.put(data)
+
+    def serial_read_into_buffer(self):
+        is_buffer_updated = False
+        if self.serial is not None and self.serial.in_waiting > 0:
+            buf = self.serial.read_all()
+            if buf:
+                self._serial_buffer += buf
+                is_buffer_updated = True
+
+        if self.serial_in is not None:
+            try:
+                buf = self.serial_in.get_nowait()
+                self._serial_buffer += buf
+                is_buffer_updated = True
+            except Empty:
+                pass
+
+        return is_buffer_updated
+
     def load(self):
         with Manager() as manager:
             try:
@@ -89,8 +123,17 @@ class ModuleLoader:
                 args = dict(values_shm=values, command_queue=command_queue)
 
                 for module_dir in self.module_paths:
+                    if self.info_queue:
+                        self.info_queue.put_nowait(
+                            (module_dir.name, ModuleInfo.STARTING)
+                        )
+
                     process = ModuleProcess(
-                        module_dir, args, self.venvs_path, self.log_path
+                        module_dir,
+                        args,
+                        self.venvs_path,
+                        self.log_path,
+                        self.info_queue,
                     )
                     self.processes.append(process)
                     process.start()
@@ -144,10 +187,12 @@ class ModuleLoader:
         title = command["title"]
         verb = command["verb"]
         value = command["value"]
+        module_name = command["module_name"]
 
         identifier = Identifier(
             title=title,
             author=author,
+            module_name=module_name,
         )
 
         match verb:
@@ -158,11 +203,11 @@ class ModuleLoader:
                 if self.on_message is not None:
                     self.on_message(identifier, value)
             case "Motor0 açısı" | "Motor1 açısı":
-                if self.serial is not None:
+                if self.serial_writable():
                     self._last_transport_command[verb] = int(value)
                     payload = transport.stringify_command(self._last_transport_command)
                     if payload:
-                        self.serial.write(payload.encode("utf-8") + b"\n")
+                        self.serial_write(payload.encode("utf-8") + b"\n")
             case "event":
                 if self.on_event is not None:
                     event_name, event_value = value
@@ -182,21 +227,16 @@ class ModuleLoader:
             except Empty:
                 pass
 
-            if self.value_queue:
+            if self.values_queue:
                 try:
-                    values = self.value_queue.get_nowait()
+                    values = self.values_queue.get_nowait()
                     actions.append((_ActionType.INCOMING_PARSED_VALUES, values))
                 except Empty:
                     pass
 
-            if self.serial is not None and self.serial.in_waiting > 0:
-                buf = self.serial.read_all()
-                if buf:
-                    self._serial_buffer += buf
-
-                if b"\n" in self._serial_buffer:
-                    line, self._serial_buffer = self._serial_buffer.split(b"\n", 1)
-                    actions.append((_ActionType.INCOMING_VALUES, line.decode("utf-8")))
+            if self.serial_read_into_buffer() and b"\n" in self._serial_buffer:
+                line, self._serial_buffer = self._serial_buffer.split(b"\n", 1)
+                actions.append((_ActionType.INCOMING_VALUES, line.decode("utf-8")))
 
             if not self.ignore_deaths:
                 died_processes = [p for p in self.processes if not p.is_alive()]

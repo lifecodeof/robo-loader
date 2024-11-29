@@ -1,111 +1,116 @@
+import multiprocessing
+import multiprocessing.synchronize
+import threading
 from contextlib import asynccontextmanager
-from multiprocessing import Event, Manager, Process
-from multiprocessing.synchronize import Event as EventType
 from pathlib import Path
-from multiprocessing import Queue
-from typing import TypedDict
-from fastapi import FastAPI, Request
+from typing import Annotated, cast
+
+from fastapi import Body, Depends, FastAPI, Request, Response
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
-from serial import Serial
-from robo_loader.impl.models import Identifier
-from robo_loader.impl.module_loader import ModuleLoader
+from serial import Serial, SerialException
+
+from robo_loader import ROOT_PATH
+from robo_loader.impl import module_loader
+from robo_loader.impl.module_process import ModuleInfo
+from robo_loader.server.module_thread import (
+    ModuleThread,
+    Status,
+    Statuses as StatusesType,
+)
+from robo_loader.server.module_thread_manager import ModuleThreadManager
 
 
-class Container(TypedDict):
-    author: str
-    title: str
-    content: str
+class StateDep:
+    def __init__(self, state_name: str):
+        self.state_name = state_name
+
+    def __call__(self, request: Request):
+        return request.app.state._state[self.state_name]
 
 
-messages: list[Container] = []
-statuses: dict[str, Container] = {}
-
-
-class TheProcess(Process):
-    def __init__(self, state: dict, stop_event: EventType | None, statuses, messages):
-        super().__init__()
-        self.state = state
-        self.stop_event = stop_event
-        self.statuses: dict = statuses
-        self.messages: list = messages
-        self.value_queue = Queue()
-
-    def run(self) -> None:
-        logger.info("'The Process' is running")
-
-        def on_message(idf: Identifier, message: str):
-            self.messages.append(
-                Container(author=idf["author"], title=idf["title"], content=message)
-            )
-
-            if len(self.messages) > 100:
-                self.messages.pop(0)
-
-        def on_state_change(idf: Identifier, state: str):
-            self.statuses[idf["author"]] = Container(
-                author=idf["author"], title=idf["title"], content=state
-            )
-
-        should_use_serial = self.state.get("use_serial", False)
-        logger.info(f"Using serial: {should_use_serial}")
-        serial = Serial("COM3", baudrate=115200) if should_use_serial else None
-
-        ModuleLoader(
-            serial=serial,
-            on_message=on_message,
-            on_state_change=on_state_change,
-            cancellation_event=self.stop_event,
-            ignore_deaths=True,
-            value_queue=self.value_queue,
-            **self.state.get("loader_args", {}),
-        ).load()
+# Dependencies
+Mtm = Annotated[ModuleThreadManager, Depends(StateDep("module_thread_manager"))]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global statuses, messages
+    try:
+        serial = Serial("COM3", baudrate=115200)
+    except SerialException:
+        serial = None
 
-    with Manager() as manager:
-        statuses = manager.dict()  # type: ignore
-        messages = manager.list()  # type: ignore
+    logger.info(f"Using serial: {serial}")
 
-        stop_event = Event()
-        logger.info("Starting 'The Process'")
-        the_process = TheProcess(app.state._state, stop_event, statuses, messages)
-        the_process.start()
+    logger.info("Starting ModuleThreadManager")
+    module_thread_manager = ModuleThreadManager(serial)
+    module_thread_manager.start()
+    app.state.module_thread_manager = module_thread_manager
 
-        app.state.values_queue = the_process.value_queue
-
-        try:
-            yield
-        except KeyboardInterrupt:
-            stop_event.set()
-            raise
-
-        stop_event.set()
-        the_process.join()
+    try:
+        yield
+    finally:
+        module_thread_manager.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/api/statuses")
-def get_statuses():
-    return list(dict(statuses).values())
-
-
-@app.get("/api/messages")
-def get_messages():
-    return list(messages)
+def get_statuses(mtm: Mtm):
+    return mtm.get_statuses()
 
 
 @app.post("/api/set_data")
-async def set_data(request: Request):
-    values_queue: Queue | None = getattr(app.state, "values_queue", None)
-    if values_queue:
-        data = await request.json()
-        values_queue.put(data)
+async def set_data(request: Request, mtm: Mtm):
+    data = await request.json()
+    mtm.set_values(data)
+
+
+@app.get("/api/photo.png")
+def get_photo(module_name: str):
+    photo_path = ROOT_PATH / "modules" / module_name / "PHOTO.png"
+    if not photo_path.exists():
+        return Response(status_code=400, content=f"{photo_path} does not exist")
+    return FileResponse(photo_path, media_type="image/png")
+
+
+@app.get("/api/running_modules")
+def get_running_modules(mtm: Mtm) -> list[str]:
+    return mtm.get_running_module_names()
+
+
+@app.get("/api/all_modules")
+def get_all_modules():
+    return [path.name for path in module_loader.get_module_paths()]
+
+
+@app.get("/api/info")
+def info(mtm: Mtm):
+    return {module: ModuleInfo.to_str(info) for module, info in mtm.get_info().items()}
+
+
+@app.get("/api/module_author_mapping")
+def module_author_mapping():
+    def get_author(path: Path):
+        at = path / "AUTHOR.txt"
+        return at.read_text(encoding="utf-8") if at.exists() else path.name
+
+    return {path.name: get_author(path) for path in module_loader.get_module_paths()}
+
+
+@app.post("/api/change_module")
+def change_module(module_name: Annotated[str, Body(embed=True)], mtm: Mtm):
+    if module_name == "Herkes":
+        module_paths = module_loader.get_module_paths()
+    else:
+        path = Path(ROOT_PATH) / "modules" / module_name
+        if not path.exists():
+            return Response(status_code=400, content=f"{path} does not exist")
+        module_paths = [path]
+
+    mtm.replace_thread(module_paths)
 
 
 app.mount(

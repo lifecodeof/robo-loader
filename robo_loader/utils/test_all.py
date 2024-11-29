@@ -37,7 +37,7 @@ def test_all():
         return module_path, test_results
 
     module_paths = module_loader.get_module_paths()
-    with UngracefulThreadPoolExecutor(max_workers=15) as executor:
+    with UngracefulThreadPoolExecutor(max_workers=10) as executor:
         results: Results = {}
         futures = [
             executor.submit(test_module, module_path) for module_path in module_paths
