@@ -1,13 +1,13 @@
+from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
 from pathlib import Path
-import shutil
 import subprocess
 import os
 import sys
 import tempfile
-from rich import progress
+import concurrent
+from rich.progress import Progress
 from robo_loader import ROOT_PATH
-
-from loguru import logger
 
 from robo_loader.utils.fs import rmrf
 
@@ -70,8 +70,14 @@ def main():
     gdrive_files = list(gdrive_path.iterdir())
 
     target_files = list(target_dir.iterdir())
-    for dir in progress.track(target_files, description="Deleting old files"):
-        rmrf(dir)
+
+    with ThreadPoolExecutor(max_workers=10) as executor, Progress() as progress:
+        task = progress.add_task("Deleting old files", total=len(target_files))
+        futures = [executor.submit(rmrf, dir) for dir in target_files]
+
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
+            progress.advance(task)
 
     for file in progress.track(gdrive_files, description="Extracting files"):
         unzip_with_7z(file, target_dir / file.stem)

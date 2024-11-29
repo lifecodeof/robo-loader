@@ -13,7 +13,6 @@ TrasportValues = TypedDict(
         "Hava Kalitesi": float,
         "Gaz": float,
         "Titreşim": float,
-        # ???
         "Yağmur": float,
         "Yakınlık": float,
     },
@@ -42,7 +41,6 @@ def parse_serial_line(line: str) -> TrasportValues | None:
                 "Hava Kalitesi": incoming["havaKalitesi"],
                 "Gaz": incoming["gazSeviyesi"],
                 "Titreşim": incoming["hareket"],
-                # ???
                 "Yağmur": incoming["suSeviyesi"],
                 "Yakınlık": incoming["mesafe"],
             }

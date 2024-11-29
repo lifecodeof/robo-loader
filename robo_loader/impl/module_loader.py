@@ -1,14 +1,17 @@
 import asyncio
 import enum
 import importlib.util
+from multiprocessing.managers import ListProxy
 import os
 import sys
-from multiprocessing import Manager, Process
+from multiprocessing import Manager, Process, Queue
 from multiprocessing.synchronize import Event
 from pathlib import Path
 from queue import Empty
 from time import sleep
 from typing import Any, Callable, TextIO
+import unittest
+import unittest.mock
 import warnings
 from serial import Serial
 
@@ -29,31 +32,39 @@ class _ModuleProcess(Process):
         core_args: dict,
         venvs_path: Path,
         log_path: Path | None,
+        pathches: list[dict] | None = None,
+        applied_patches: "ListProxy[unittest.mock._patch] | None" = None,
     ):
-        super().__init__(daemon=True)
+        super().__init__(daemon=True, name=f"ModuleProcess-{module_path.name}")
         self.module_path = module_path
         self.core_args = core_args
         self.venvs_path = venvs_path
         self.log_path = log_path
+        self.pathches = pathches
+        self.applied_patches = applied_patches
 
     @property
     def name(self) -> str:
         return self.module_path.name
 
     def run(self):
+        try:
+            import cv2  # type: ignore
+
+            cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_SILENT)
+        except ImportError:
+            pass
+
         if self.log_path is not None:
 
-            def _redirect_stream(stream_name, target_file):
+            def _redirect_stream(stream_name, target_file: Path):
                 """Redirect a C-level stream like stdout or stderr."""
-                # Get the file descriptor of the target file
-                file_descriptor = os.open(
-                    target_file,
-                    os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
-                )
-                # Redirect the C-level stream to the file
-                os.dup2(file_descriptor, getattr(sys, stream_name).fileno())
-                # Close the file descriptor, it is now owned by the process
-                os.close(file_descriptor)
+
+                target_file.parent.mkdir(parents=True, exist_ok=True)
+                target_file.touch()
+
+                file = open(target_file, "w", buffering=1, encoding="utf-8")
+                setattr(sys, stream_name, file)
 
             warnings.filterwarnings("ignore")
             logger.remove(0)
@@ -67,20 +78,30 @@ class _ModuleProcess(Process):
                 "stderr", self.log_path.with_stem(self.log_path.stem + ".stderr")
             )
 
+        applied_patches: list[unittest.mock._patch] = []
+        if self.pathches:
+            for patch in self.pathches:
+                applied_patches.append(unittest.mock.patch(**patch))
+
         try:
+            for patch in applied_patches:
+                patch.start()
             _run_module(
                 self.module_path,
                 self.core_args,
                 self.venvs_path,
-                self.log_path,
             )
         finally:
+            if applied_patches:
+                for patch in applied_patches:
+                    patch.stop()
+
+            if self.applied_patches is not None:
+                self.applied_patches.extend(applied_patches)
+
             if self.log_path is not None:
                 sys.stdout.flush()
                 sys.stderr.flush()
-
-                sys.stdout.close()
-                sys.stderr.close()
 
 
 class _ActionType(enum.Enum):
@@ -117,8 +138,9 @@ def load(
     serial: Serial | None = None,
     ignore_deaths: bool = False,
     venvs_path: Path | None = None,
-    value_queue=None,
+    value_queue: "Queue | None" = None,
     log_path: Path | None = None,
+    patches: list[dict] | None = None,
 ):
     venvs_path = venvs_path or ROOT_PATH / "venvs"
     is_cancelled = (
@@ -128,157 +150,151 @@ def load(
     if module_paths is None:
         module_paths = get_module_paths()
 
-    processes: list[Process] = []
-    manager_ctxman = Manager()
-    try:
-        manager = manager_ctxman.__enter__()
-        values = manager.dict()
+    processes: list[_ModuleProcess] = []
+    with Manager() as manager:
+        try:
+            applied_patches = manager.list()
+            values = manager.dict()
 
-        command_queue = manager.Queue()
-        args = dict(values_shm=values, command_queue=command_queue)
+            command_queue = manager.Queue()
+            args = dict(values_shm=values, command_queue=command_queue)
 
-        # for module_dir in module_paths:
-        #     VenvManager(module_dir.name).ensure_requirements(
-        #         module_dir / "requirements.txt"
-        #     )
+            for module_dir in module_paths:
+                process = _ModuleProcess(
+                    module_dir, args, venvs_path, log_path, patches, applied_patches
+                )
+                processes.append(process)
+                process.start()
 
-        for module_dir in module_paths:
-            process = _ModuleProcess(module_dir, args, venvs_path, log_path)
-            processes.append(process)
-            process.start()
+            serial_buffer = b""
 
-        serial_buffer = b""
+            def select_actions() -> list[_Action]:
+                nonlocal serial_buffer
 
-        def select_actions() -> list[_Action]:
-            nonlocal serial_buffer
+                while True:
+                    actions = []
+                    if is_cancelled():
+                        actions.append((_ActionType.CANCEL, None))
 
-            while True:
-                actions = []
-                if is_cancelled():
-                    actions.append((_ActionType.CANCEL, None))
-
-                try:
-                    command = command_queue.get_nowait()
-                    actions.append((_ActionType.COMMAND, command))
-                except Empty:
-                    pass
-
-                if value_queue:
                     try:
-                        values = value_queue.get_nowait()
-                        actions.append((_ActionType.INCOMING_PARSED_VALUES, values))
+                        command = command_queue.get_nowait()
+                        actions.append((_ActionType.COMMAND, command))
                     except Empty:
                         pass
 
-                if serial is not None and serial.in_waiting > 0:
-                    buf = serial.read_all()
-                    if buf:
-                        serial_buffer += buf
+                    if value_queue:
+                        try:
+                            values = value_queue.get_nowait()
+                            actions.append((_ActionType.INCOMING_PARSED_VALUES, values))
+                        except Empty:
+                            pass
 
-                    if b"\n" in serial_buffer:
-                        line, serial_buffer = serial_buffer.split(b"\n", 1)
-                        actions.append(
-                            (_ActionType.INCOMING_VALUES, line.decode("utf-8"))
-                        )
+                    if serial is not None and serial.in_waiting > 0:
+                        buf = serial.read_all()
+                        if buf:
+                            serial_buffer += buf
 
-                if not ignore_deaths:
-                    died_processes = [p for p in processes if not p.is_alive()]
-                    if len(died_processes) > 0:
-                        actions.append((_ActionType.DIED, died_processes))
+                        if b"\n" in serial_buffer:
+                            line, serial_buffer = serial_buffer.split(b"\n", 1)
+                            actions.append(
+                                (_ActionType.INCOMING_VALUES, line.decode("utf-8"))
+                            )
 
-                if len(actions) > 0:
-                    return actions
+                    if not ignore_deaths:
+                        died_processes = [p for p in processes if not p.is_alive()]
+                        if len(died_processes) > 0:
+                            actions.append((_ActionType.DIED, died_processes))
 
-                sleep(0.01)
+                    if len(actions) > 0:
+                        return actions
 
-        transport_command = transport.TransportCommand(
-            {
-                "Motor0 açısı": 0,
-                "Motor1 açısı": 0,
-            }
-        )
+                    sleep(0.01)
 
-        def handle_command(command: Command):
-            author = command["author"]
-            title = command["title"]
-            verb = command["verb"]
-            value = command["value"]
-
-            identifier = Identifier(
-                title=title,
-                author=author,
+            transport_command = transport.TransportCommand(
+                {
+                    "Motor0 açısı": 0,
+                    "Motor1 açısı": 0,
+                }
             )
 
-            # logger.info(f"Command: {command}")
+            def handle_command(command: Command):
+                author = command["author"]
+                title = command["title"]
+                verb = command["verb"]
+                value = command["value"]
 
-            match verb:
-                case "Durum":
-                    if on_state_change is not None:
-                        on_state_change(identifier, value)
-                case "Mesaj":
-                    if on_message is not None:
-                        on_message(identifier, value)
-                case "Motor0 açısı" | "Motor1 açısı":
-                    if serial is not None:
-                        transport_command[verb] = int(value)
-                        payload = transport.stringify_command(transport_command)
-                        if payload:
-                            serial.write(payload.encode("utf-8") + b"\n")
-                case _:
-                    raise Exception(f"Unknown command verb: {verb}")
+                identifier = Identifier(
+                    title=title,
+                    author=author,
+                )
 
-        reported_deaths = set()
+                match verb:
+                    case "Durum":
+                        if on_state_change is not None:
+                            on_state_change(identifier, value)
+                    case "Mesaj":
+                        if on_message is not None:
+                            on_message(identifier, value)
+                    case "Motor0 açısı" | "Motor1 açısı":
+                        if serial is not None:
+                            transport_command[verb] = int(value)
+                            payload = transport.stringify_command(transport_command)
+                            if payload:
+                                serial.write(payload.encode("utf-8") + b"\n")
+                    case _:
+                        raise Exception(f"Unknown command verb: {verb}")
 
-        def handle_action(action: _Action):
-            action_type, payload = action
-            match action_type:
-                case _ActionType.CANCEL:
-                    logger.info("Cancelling the loader.")
-                    return True
-                case _ActionType.DIED:
-                    module_names = [p.name for p in payload]
-                    if ignore_deaths:
-                        for name in module_names:
-                            if name not in reported_deaths:
-                                logger.warning(f"{name} module has died.")
-                                reported_deaths.add(name)
-                    else:
-                        raise Exception(f"{module_names} modules has died.")
-                case _ActionType.COMMAND:
-                    handle_command(payload)
-                case _ActionType.INCOMING_VALUES:
-                    str_values = payload
-                    logger.info(f"Values: {str_values}")
-                    parsed_values = transport.parse_serial_line(str_values)
-                    if parsed_values:
-                        values.update(parsed_values)
-                case _ActionType.INCOMING_PARSED_VALUES:
-                    logger.info(f"Values: {payload}")
-                    values.update(payload)
+            reported_deaths = set()
 
-        while True:
-            actions = select_actions()
-            should_break = False
-            for action in actions:
-                should_break = should_break or handle_action(action)
+            def handle_action(action: _Action):
+                action_type, payload = action
+                match action_type:
+                    case _ActionType.CANCEL:
+                        logger.info("Cancelling the loader.")
+                        return True
+                    case _ActionType.DIED:
+                        module_names = [p.name for p in payload]
+                        if ignore_deaths:
+                            for name in module_names:
+                                if name not in reported_deaths:
+                                    logger.warning(f"{name} module has died.")
+                                    reported_deaths.add(name)
+                        else:
+                            raise Exception(f"{module_names} modules has died.")
+                    case _ActionType.COMMAND:
+                        handle_command(payload)
+                    case _ActionType.INCOMING_VALUES:
+                        str_values = payload
+                        logger.info(f"Feeding values: {str_values}")
+                        parsed_values = transport.parse_serial_line(str_values)
+                        if parsed_values:
+                            values.update(parsed_values)
+                    case _ActionType.INCOMING_PARSED_VALUES:
+                        logger.info(f"Feeding values: {payload}")
+                        values.update(payload)
 
-            if should_break:
-                break
-    finally:
-        manager.__exit__(None, None, None)
+            while True:
+                actions = select_actions()
+                should_break = False
+                for action in actions:
+                    should_break = should_break or handle_action(action)
 
-        for p in processes:
-            p.terminate()
+                if should_break:
+                    break
+        finally:
+            for p in processes:
+                p.terminate()
 
-        for p in processes:
-            p.join()
+            for p in processes:
+                p.join()
+
+        return list(applied_patches)
 
 
 def _run_module(
     module_dir: Path,
     args: dict,
     venvs_path: Path,
-    log_path: Path | None,
 ):
     title_file = module_dir / "TITLE.txt"
     author_file = module_dir / "AUTHOR.txt"

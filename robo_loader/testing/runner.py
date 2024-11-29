@@ -1,32 +1,35 @@
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from threading import Lock
 from typing import TYPE_CHECKING, cast
 
 from loguru import logger
+from robo_loader.testing.test_model import Test, TestContext, TestMeta
 from robo_loader.testing.unit_tests import tests
 
 if TYPE_CHECKING:
     from loguru import Message
 
 
+class TestStatus(Enum):
+    PASSED = object()
+    FAILED = object()
+    NOT_RUN = object()
+
+
 @dataclass(frozen=True)
-class TestMeta:
-    name: str
-    description: str
-    is_required: bool
-    requires_required: bool
+class TestResult:
+    status: TestStatus
+    message: str = ""
 
 
-TestResults = dict[
-    TestMeta, str | bool
-]  # True: passed | False: not runned | str: error message
+TestResults = dict[TestMeta, TestResult]
 
 logger_setup_lock = Lock()
 
 
 class TestRunner:
-    results: TestResults | None = None
     logs_path: Path
 
     def __init__(self, logs_path: Path) -> None:
@@ -35,52 +38,75 @@ class TestRunner:
             self.logs_path.mkdir()
 
     def run(self, module_path: Path):
-        is_logger_setup = getattr(logger, "_test_runner_is_setup", False)
-        if not is_logger_setup:
+        self._setup_logger()
+
+        results: TestResults = {}
+        test_queue = tests.tests.copy()
+
+        while test_queue:
+            test = test_queue.pop(0)
+            meta = test.test_meta
+
+            # If the test has no dependencies, run it immediately
+            if not meta.dependencies:
+                result = self._run_test(test, module_path)
+                results[meta] = result
+                continue
+
+            unresolved_dependencies = [
+                dep.test_meta
+                for dep in meta.dependencies
+                if dep.test_meta not in results
+            ]
+            # If the test has unresolved dependencies, defer it
+            if unresolved_dependencies:
+                test_queue.append(test)
+                continue
+
+            failed_dependencies = [
+                dep.test_meta
+                for dep in meta.dependencies
+                if results[dep.test_meta].status is not TestStatus.PASSED
+            ]
+            # If the test has failed dependencies, mark it as not run
+            if failed_dependencies:
+                fd_repr = ", ".join([dep.name for dep in failed_dependencies])
+                results[meta] = TestResult(
+                    TestStatus.NOT_RUN,
+                    f"Çalıştırılmadı. Başarısız gereksinimler: {fd_repr}",
+                )
+                continue
+
+            # If the test has passed dependencies, run it
+            result = self._run_test(test, module_path)
+            results[meta] = result
+
+        return results
+
+    def _run_test(self, test: Test, module_path: Path):
+        meta = test.test_meta
+
+        log_file = self.logs_path / f"{meta.name}.log"
+        try:
+            with logger.contextualize(_test_runner_log_file=log_file):
+                ctx = TestContext(module_path, log_file)
+                test(ctx)
+            return TestResult(TestStatus.PASSED)
+        except Exception as e:
+            return TestResult(TestStatus.FAILED, str(e))
+
+    def _setup_logger(self):
+        if not getattr(logger, "_test_runner_is_setup", False):
             with logger_setup_lock:
-                is_logger_setup = getattr(logger, "_test_runner_is_setup", False)
-                if not is_logger_setup:
+                if not getattr(logger, "_test_runner_is_setup", False):
                     try:
                         logger.remove(0)
                     except ValueError:
                         ...
 
                     def logger_sink(message: "Message"):
-                        if file := message.record["extra"].get("_log_file"):
+                        if file := message.record["extra"].get("_test_runner_log_file"):
                             cast(Path, file).write_text(message, encoding="utf-8")
 
                     logger.add(logger_sink)
                     setattr(logger, "_test_runner_is_setup", True)
-
-        self.results = {}
-        for test in tests.tests:
-            meta = TestMeta(
-                name=test.__name__,
-                description=test.__doc__ or "?",
-                is_required=test.test_is_required,
-                requires_required=test.test_requires_required,
-            )
-
-            if meta.requires_required and not self.are_required_tests_passed():
-                self.results[meta] = False
-                continue
-
-            log_file = self.logs_path / f"{meta.name}.log"
-            try:
-                with logger.contextualize(_log_file=log_file):
-                    test(module_path, log_file)
-                self.results[meta] = True
-            except Exception as e:
-                self.results[meta] = str(e)
-
-    def are_required_tests_passed(self) -> bool:
-        for test_meta, result in self.get_results().items():
-            if test_meta.is_required and result is not True:
-                return False
-
-        return True
-
-    def get_results(self) -> TestResults:
-        if self.results is None:
-            raise ValueError("No tests ran yet")
-        return self.results

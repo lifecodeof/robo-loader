@@ -1,59 +1,59 @@
-from pathlib import Path
-from re import I
+import multiprocessing
+import random
 import threading
+from unittest import mock
 
 from loguru import logger
+from robo_loader.impl.core_impl import CoreImpl
 from robo_loader.impl.venv_manager import RequirementsError, VenvManager
-from robo_loader.testing.test import Tests
-import sys
+from robo_loader.testing.test_model import TestContext, Tests
 from multiprocessing import Event
 
 from loguru import logger
 
-from robo_loader import ROOT_PATH
 from robo_loader.impl import module_loader
 
 tests = Tests()
 
 
 @tests()
-def test_has_photo(module_dir: Path, log_file: Path):
+def test_has_photo(ctx: TestContext):
     """Fotoğraf dosyası olmalı"""
-    photo_path = module_dir / "PHOTO.png"
+    photo_path = ctx.module_path / "PHOTO.png"
     assert photo_path.exists(), "PHOTO.png fotoğrafı bulunamadı."
 
 
 @tests()
-def test_has_author(module_dir: Path, log_file: Path):
+def test_has_author(ctx: TestContext):
     """AUTHOR.txt dosyası olmalı"""
-    author_path = module_dir / "AUTHOR.txt"
+    author_path = ctx.module_path / "AUTHOR.txt"
     assert author_path.exists(), "AUTHOR.txt dosyası bulunamadı."
     if author_path.read_text().strip() == "":
         assert False, "AUTHOR.txt dosyası boş."
 
 
 @tests()
-def test_has_title(module_dir: Path, log_file: Path):
+def test_has_title(ctx: TestContext):
     """TITLE.txt dosyası olmalı"""
-    title_path = module_dir / "TITLE.txt"
+    title_path = ctx.module_path / "TITLE.txt"
     assert title_path.exists(), "TITLE.txt dosyası bulunamadı."
     if title_path.read_text().strip() == "":
         assert False, "TITLE.txt dosyası boş."
 
 
-@tests(is_required=True)
-def test_has_main_py(module_dir: Path, log_file: Path):
+@tests()
+def test_has_main_py(ctx: TestContext):
     """main.py dosyası olmalı"""
-    main_py_path = module_dir / "main.py"
+    main_py_path = ctx.module_path / "main.py"
     assert main_py_path.exists(), "main.py dosyası bulunamadı."
 
 
-@tests(is_required=True)
-def test_main_py_has_main_fn(module_dir: Path, log_file: Path):
+@tests(depends=[test_has_main_py])
+def test_main_py_has_main_fn(ctx: TestContext):
     """main.py dosyasında main fonksiyonu olmalı"""
     import ast
 
-    main_py_path = module_dir / "main.py"
+    main_py_path = ctx.module_path / "main.py"
     main_py_contents = main_py_path.read_text(encoding="utf-8")
     main_py_tree = ast.parse(main_py_contents)
     for node in ast.walk(main_py_tree):
@@ -76,20 +76,57 @@ def test_main_py_has_main_fn(module_dir: Path, log_file: Path):
         assert False, "main.py dosyasında main fonksiyonu bulunamadı."
 
 
-@tests(is_required=True)
-def test_requirements_installable(module_dir: Path, log_file: Path):
+@tests()
+def test_requirements_installable(ctx: TestContext):
     """requirements.txt dosyasındaki paketler yüklenebilmeli"""
-    venv_manager = VenvManager(module_dir.name, module_dir)
+    venv_manager = VenvManager(ctx.module_path.name)
     try:
-        venv_manager.ensure_requirements(module_dir / "requirements.txt")
+        venv_manager.ensure_requirements(ctx.module_path / "requirements.txt")
     except RequirementsError:
         assert False, "requirements.txt hatalı."
 
 
-@tests(requires_required=True)
-def test_e2e(module_dir: Path, log_file: Path):
+class RandomValueFeederThread(threading.Thread):
+    LABELS = [
+        "Sıcaklık",
+        "Nem",
+        "Işık",
+        "Mesafe",
+        "Nabız",
+        "Hava Kalitesi",
+        "Gaz",
+        "Titreşim",
+        "Yağmur",
+        "Yakınlık",
+    ]
+
+    def __init__(
+        self, cancel_event: threading.Event, value_queue: "multiprocessing.Queue"
+    ):
+        super().__init__()
+        self.cancel_event = cancel_event
+        self.value_queue = value_queue
+
+    def run(self):
+        import time
+
+        while not self.cancel_event.is_set():
+            values = {}
+            for label in RandomValueFeederThread.LABELS:
+                values[label] = random.randint(0, 500)
+            self.value_queue.put(values)
+            time.sleep(10)
+
+
+@tests(
+    depends=[
+        test_main_py_has_main_fn,
+        test_requirements_installable,
+    ]
+)
+def test_load_and_state_change(ctx: TestContext):
     """Modül yüklenebilmeli ve durum belirtmeli."""
-    logger.info(f"Loading module {module_dir.name}")
+    logger.info(f"Loading module {ctx.module_path.name}")
     cancel_event = Event()
     state_changed = False
     timeout_reached = False
@@ -100,15 +137,12 @@ def test_e2e(module_dir: Path, log_file: Path):
         cancel_event.set()
         logger.info("State changed")
 
-    def handle_message(_, message: str):
-        logger.warning(f"MESSAGE: {message}")
-
     def handle_timeout():
         nonlocal timeout_reached
         if cancel_event.is_set():
             return
 
-        logger.error("Module loading timed out after 3 minutes")
+        logger.error("Module loading timed out after 1 minutes")
         timeout_reached = True
         cancel_event.set()
 
@@ -117,11 +151,11 @@ def test_e2e(module_dir: Path, log_file: Path):
 
     try:
         module_loader.load(
-            module_paths=[module_dir],
+            module_paths=[ctx.module_path],
             on_state_change=handle_state_change,
-            on_message=handle_message,
+            on_message=lambda _, message: logger.warning(f"MESSAGE: {message}"),
             cancellation_event=cancel_event,
-            log_path=log_file,
+            log_path=ctx.log_file,
         )
         timeout_thread.cancel()
 
@@ -129,14 +163,72 @@ def test_e2e(module_dir: Path, log_file: Path):
             return
 
         if timeout_reached:
-            assert False, "Zaman aşımı gerçekleşti (3 dakika)."
+            assert (
+                False
+            ), "core.set_state() çağrılmadığı için zaman aşımı gerçekleşti (1 dakika)."
 
-        assert False, "Modül durum belirmedi/değiştirmedi."
+        assert (
+            False
+        ), "Modül durum belirmedi/değiştirmedi. [core.set_state() çağrılmadı]"
     except KeyboardInterrupt:
         cancel_event.set()
         raise
     except BaseException:
         logger.exception(
-            f"An error occurred while loading the module: {module_dir.name}"
+            f"An error occurred while loading the module: {ctx.module_path.name}"
         )
-        assert False, "Modül yüklenirken hata oluştu."
+        assert False, "Modül yüklenirken hata oluştu. (log dosyalarını kontrol edin)"
+
+
+@tests() # @tests(depends=[test_load_and_state_change])
+def test_sound(ctx: TestContext):
+    """Modül ses çalmalı."""
+    logger.info(f"Loading module {ctx.module_path.name}")
+    cancel_event = Event()
+    timeout_reached = False
+
+    def handle_timeout():
+        nonlocal timeout_reached
+        if cancel_event.is_set():
+            return
+
+        logger.error("Module loading timed out after 1 minutes")
+        timeout_reached = True
+        cancel_event.set()
+
+    timeout_thread = threading.Timer(60, handle_timeout)
+    timeout_thread.start()
+
+    try:
+        patches = module_loader.load(
+            module_paths=[ctx.module_path],
+            on_message=lambda _, message: logger.warning(f"MESSAGE: {message}"),
+            cancellation_event=cancel_event,
+            log_path=ctx.log_file,
+            patches=[dict(target="robo_loader.impl.core_impl.CoreImpl.play_sound")],
+        )
+        timeout_thread.cancel()
+
+        if timeout_reached:
+            assert (
+                False
+            ), "core.play_sound() çağrılmadığı için zaman aşımı gerçekleşti (1 dakika)."
+
+        assert (
+            play_sound.call_count
+        ), "Modül ses çalmadı. [core.play_sound() çağrılmadı]"
+
+        for (sound_path,) in play_sound.call_args_list:
+            exc = CoreImpl.validate_sound_path(ctx.module_path, sound_path)
+            assert not exc, f"Geçersiz ses dosyası ({sound_path}) çalındı: {exc!r}"
+
+    except KeyboardInterrupt:
+        cancel_event.set()
+        raise
+    except BaseException:
+        logger.exception(
+            f"An error occurred while loading the module: {ctx.module_path.name}"
+        )
+        assert False, "Modül yüklenirken hata oluştu. (log dosyalarını kontrol edin)"
+
+tests.tests.reverse()

@@ -153,26 +153,34 @@ class CoreImpl:
         """
         pass
 
-    async def play_sound(self, sound_path: str | Path) -> None:
-        """Belirtilen ses dosyasını çalar."""
-
+    @staticmethod
+    def validate_sound_path(
+        root_path: Path, sound_path: str | Path
+    ) -> Exception | None:
         sound_path = Path(sound_path)
         if not sound_path.exists():
-            raise FileNotFoundError(f"Dosya bulunamadı: {sound_path}")
+            return FileNotFoundError(f"Dosya bulunamadı: {sound_path}")
 
-        project_root = self.root_path
+        project_root = root_path
         if sound_path.is_absolute():
             if not sound_path.is_relative_to(project_root):
-                raise Exception("Proje klasörünün dışındaki sesleri oynatamazsınız.")
+                return Exception("Proje klasörünün dışındaki sesleri oynatamazsınız.")
 
             correct_path = str(sound_path.relative_to(project_root))
-            raise Exception(
+            return Exception(
                 f"C:\\'den itibaren dosya yolu belirtemezsiniz bunun yerine {correct_path!r} yazın."
             )
 
         sound_path = project_root / sound_path
         if not sound_path.exists():
-            raise FileNotFoundError(f"Dosya bulunamadı: {sound_path}")
+            return FileNotFoundError(f"Dosya bulunamadı: {sound_path}")
+
+    async def play_sound(self, sound_path: str | Path) -> None:
+        """Belirtilen ses dosyasını çalar."""
+
+        exc = self.validate_sound_path(self.root_path, sound_path)
+        if exc:
+            raise exc
 
         pygame.mixer.music.load(str(sound_path))
         pygame.mixer.music.play()

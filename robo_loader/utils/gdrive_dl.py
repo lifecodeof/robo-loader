@@ -39,7 +39,7 @@ def main():
         {"q": f"'{folder_id}' in parents and trashed=false"}
     ).GetList()
 
-    donwloaded_file_count = 0
+    new_files: list[str] = []
     for file in track(file_list, "[green]Downloading files...", len(file_list)):
         file_name = file["title"]
         local_path = destination / file_name
@@ -52,10 +52,10 @@ def main():
                 local_path.unlink()
 
         file.GetContentFile(str(local_path))
-        donwloaded_file_count += 1
+        new_files.append(file_name)
 
-    if donwloaded_file_count > 0:
-        rich.print(f"[green]Downloaded {file_name} new files")
+    if new_files:
+        rich.print(f"[green]Downloaded {new_files!r} new files")
     else:
         rich.print(f"[yellow]No new files to download")
 
