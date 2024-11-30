@@ -47,7 +47,7 @@ def test_has_main_py(ctx: TestContext):
 
 @tests(depends=[test_has_main_py])
 def test_main_py_has_main_fn(ctx: TestContext):
-    """main.py dosyasında main fonksiyonu olmalı"""
+    """main.py dosyasında main fonksiyonu olmalı | async def main(core: Core):"""
     import ast
 
     main_py_path = ctx.module_path / "main.py"
@@ -63,7 +63,10 @@ def test_main_py_has_main_fn(ctx: TestContext):
             ), "main fonksiyonu async olmalı."
 
             args_len = len(node.args.args)
-            assert args_len == 1, "main fonksiyonunun sadece 1 parametresi olmalı"
+            assert (
+                args_len != 0
+            ), "main fonksiyonunu async def main(core: Core) şekline olmalı"
+            assert args_len == 1, "main fonksiyonunun core dışında parametresi olmamalı"
 
             arg = node.args.args[0]
             assert arg.arg == "core", "main fonksiyonunun parametresi 'core' olmalı"
