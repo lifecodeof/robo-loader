@@ -48,7 +48,7 @@ class VenvManager:
         self.ensure_venv()
 
         installed_cache_file = self.venv_path / ".installed"
-        failed_cache_file = self.venv_path / ".failed"
+        # failed_cache_file = self.venv_path / ".failed"
 
         if (
             installed_cache_file.exists()
@@ -56,13 +56,13 @@ class VenvManager:
         ):
             return
 
-        if (
-            failed_cache_file.exists()
-            and failed_cache_file.read_bytes() == requirements_path.read_bytes()
-        ):
-            raise RequirementsError(
-                f"Failed to install requirements for venv: {self.venv_name}"
-            )
+        # if (
+        #     failed_cache_file.exists()
+        #     and failed_cache_file.read_bytes() == requirements_path.read_bytes()
+        # ):
+        #     raise RequirementsError(
+        #         f"Failed to install requirements for venv: {self.venv_name}"
+        #     )
 
         logger.info(f"Installing requirements for venv: {self.venv_name}")
         pip = subprocess.run(
@@ -80,7 +80,7 @@ class VenvManager:
 
         if pip.returncode != 0:
             stderr = pip.stderr.decode("utf-8")
-            failed_cache_file.write_bytes(requirements_path.read_bytes())
+            # failed_cache_file.write_bytes(requirements_path.read_bytes())
             raise RequirementsError(
                 f"Failed to install requirements for venv: {self.venv_name}\n{stderr}"
             )

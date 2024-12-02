@@ -6,10 +6,16 @@ import os
 import sys
 import tempfile
 import concurrent
+from loguru import logger
 from rich.progress import Progress
 from robo_loader import ROOT_PATH
 
 from robo_loader.utils.fs import rmrf
+
+
+class FileStructureError(Exception):
+    def __init__(self) -> None:
+        super().__init__("Unknown archive structure")
 
 
 def unzip_with_7z(archive_path: Path, target: Path) -> None:
@@ -31,18 +37,19 @@ def unzip_with_7z(archive_path: Path, target: Path) -> None:
 
         temp = Path(temp_dir)
 
-        project_dir = infer_project_dir(temp)
+        with logger.catch(FileStructureError, reraise=False):
+            project_dir = infer_project_dir(temp)
 
-        if target.exists():
-            if target.is_dir():
-                rmrf(target)
-            else:
-                target.unlink()
+            if target.exists():
+                if target.is_dir():
+                    rmrf(target)
+                else:
+                    target.unlink()
 
-        if not target.parent.exists():
-            target.parent.mkdir(parents=True)
+            if not target.parent.exists():
+                target.parent.mkdir(parents=True)
 
-        project_dir.rename(target)
+            project_dir.rename(target)
 
 
 def infer_project_dir(input_dir: Path) -> Path:
@@ -58,7 +65,7 @@ def infer_project_dir(input_dir: Path) -> Path:
         return infer_project_dir(contents[0])
     else:
         subprocess.call(["tree.com", str(input_dir)])
-        raise Exception(f"Unknown archive structure")
+        raise FileStructureError()
 
 
 def main():

@@ -21,7 +21,7 @@ export default function RunningModules() {
         <Alert>Hata oluştu: {runningModules.error.message}</Alert>
       )}
 
-      <div className="flex flex-wrap gap-4 m-4 pt-8">
+      <div className="flex flex-wrap gap-4 m-4 pt-8 justify-center">
         {runningModules.data?.map((module) => (
           <div role="alert" className="alert alert-info w-max">
             <svg

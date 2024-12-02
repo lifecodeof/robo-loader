@@ -83,6 +83,7 @@ def test_requirements_installable(ctx: TestContext):
     try:
         venv_manager.ensure_requirements(ctx.module_path / "requirements.txt")
     except RequirementsError:
+        logger.exception("Pip install failed")
         assert False, "requirements.txt hatalı."
 
 

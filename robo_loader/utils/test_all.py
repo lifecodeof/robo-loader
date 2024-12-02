@@ -80,9 +80,24 @@ def report_results(results: Results):
     )
 
 
+def package_to_share():
+    import shutil
+
+    share_dir = ROOT_PATH / "share"
+    if share_dir.exists():
+        rmrf(share_dir)
+    share_dir.mkdir()
+
+    html_file = logs_path / "test_results.html"
+    shutil.copy(html_file, share_dir / "test_results.html")
+
+    shutil.make_archive(str(share_dir / "logs"), "zip", logs_path)
+
+
 def main():
     results = test_all()
     report_results(results)
+    package_to_share()
 
 
 if __name__ == "__main__":

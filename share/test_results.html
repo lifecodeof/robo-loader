@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+.r1 {color: #f4005f; text-decoration-color: #f4005f}
+.r2 {color: #f4005f; text-decoration-color: #f4005f; font-weight: bold}
+.r3 {color: #98e024; text-decoration-color: #98e024}
+.r4 {color: #98e024; text-decoration-color: #98e024; font-weight: bold}
+.r5 {color: #fd971f; text-decoration-color: #fd971f}
+.r6 {color: #fd971f; text-decoration-color: #fd971f; font-weight: bold}
+body {
+    color: #d9d9d9;
+    background-color: #0c0c0c;
+}
+</style>
+</head>
+<body>
+    <pre style="font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><code style="font-family:inherit"><span class="r1">✗ ismail_kalfe_220211005 - İsmail Kalfe</span>
+<span class="r1">  ✗ test_has_photo </span><span class="r2">(</span><span class="r1">Fotoğraf dosyası olmalı</span><span class="r2">)</span><span class="r1">: PHOTO.png fotoğrafı bulunamadı.</span>
+<span class="r3">  ✓ test_has_author </span><span class="r4">(</span><span class="r3">AUTHOR.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_title </span><span class="r4">(</span><span class="r3">TITLE.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_main_py </span><span class="r4">(</span><span class="r3">main.py dosyası olmalı</span><span class="r4">)</span>
+<span class="r1">  ✗ test_main_py_has_main_fn </span><span class="r2">(</span><span class="r1">main.py dosyasında main fonksiyonu olmalı | async def </span><span class="r2">main(</span><span class="r1">core: Core</span><span class="r2">)</span><span class="r1">:</span><span class="r2">)</span><span class="r1">: main </span>
+<span class="r1">fonksiyonunu async def </span><span class="r2">main(</span><span class="r1">core: Core</span><span class="r2">)</span><span class="r1"> şekline olmalı</span>
+<span class="r3">  ✓ test_requirements_installable </span><span class="r4">(</span><span class="r3">requirements.txt dosyasındaki paketler yüklenebilmeli</span><span class="r4">)</span>
+<span class="r5">  ! test_load_and_state_change </span><span class="r6">(</span><span class="r5">Modül yüklenebilmeli ve durum belirtmeli</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: </span>
+<span class="r5">test_main_py_has_main_fn</span>
+<span class="r5">  ! test_send_message_not_called </span><span class="r6">(</span><span class="r5">Mesajlar artık görünmeyecek</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: </span>
+<span class="r5">test_main_py_has_main_fn</span>
+<span class="r5">  ! test_play_sound_called </span><span class="r6">(</span><span class="r5">Modül ses çalmalı</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: test_load_and_state_change</span>
+<span class="r1">✗ sude_sonmez220211030 - Sude Sönmez</span>
+<span class="r3">  ✓ test_has_photo </span><span class="r4">(</span><span class="r3">Fotoğraf dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_author </span><span class="r4">(</span><span class="r3">AUTHOR.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_title </span><span class="r4">(</span><span class="r3">TITLE.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_main_py </span><span class="r4">(</span><span class="r3">main.py dosyası olmalı</span><span class="r4">)</span>
+<span class="r1">  ✗ test_main_py_has_main_fn </span><span class="r2">(</span><span class="r1">main.py dosyasında main fonksiyonu olmalı | async def </span><span class="r2">main(</span><span class="r1">core: Core</span><span class="r2">)</span><span class="r1">:</span><span class="r2">)</span><span class="r1">: main </span>
+<span class="r1">fonksiyonunu async def </span><span class="r2">main(</span><span class="r1">core: Core</span><span class="r2">)</span><span class="r1"> şekline olmalı</span>
+<span class="r1">  ✗ test_requirements_installable </span><span class="r2">(</span><span class="r1">requirements.txt dosyasındaki paketler yüklenebilmeli</span><span class="r2">)</span><span class="r1">: requirements.txt hatalı.</span>
+<span class="r5">  ! test_load_and_state_change </span><span class="r6">(</span><span class="r5">Modül yüklenebilmeli ve durum belirtmeli</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: </span>
+<span class="r5">test_main_py_has_main_fn, test_requirements_installable</span>
+<span class="r5">  ! test_send_message_not_called </span><span class="r6">(</span><span class="r5">Mesajlar artık görünmeyecek</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: </span>
+<span class="r5">test_main_py_has_main_fn, test_requirements_installable</span>
+<span class="r5">  ! test_play_sound_called </span><span class="r6">(</span><span class="r5">Modül ses çalmalı</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: test_load_and_state_change</span>
+<span class="r1">✗ emre_ozturk_220211038 - Emre Öztürk</span>
+<span class="r3">  ✓ test_has_photo </span><span class="r4">(</span><span class="r3">Fotoğraf dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_author </span><span class="r4">(</span><span class="r3">AUTHOR.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_title </span><span class="r4">(</span><span class="r3">TITLE.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_main_py </span><span class="r4">(</span><span class="r3">main.py dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_main_py_has_main_fn </span><span class="r4">(</span><span class="r3">main.py dosyasında main fonksiyonu olmalı | async def </span><span class="r4">main(</span><span class="r3">core: Core</span><span class="r4">)</span><span class="r3">:</span><span class="r4">)</span>
+<span class="r3">  ✓ test_requirements_installable </span><span class="r4">(</span><span class="r3">requirements.txt dosyasındaki paketler yüklenebilmeli</span><span class="r4">)</span>
+<span class="r1">  ✗ test_load_and_state_change </span><span class="r2">(</span><span class="r1">Modül yüklenebilmeli ve durum belirtmeli</span><span class="r2">)</span><span class="r1">: Modül yüklenirken hata oluştu. </span><span class="r2">(</span><span class="r1">log </span>
+<span class="r1">dosyalarını kontrol edin</span><span class="r2">)</span>
+<span class="r1">  ✗ test_send_message_not_called </span><span class="r2">(</span><span class="r1">Mesajlar artık görünmeyecek</span><span class="r2">)</span><span class="r1">: Modül yüklenirken hata oluştu. </span><span class="r2">(</span><span class="r1">log dosyalarını kontrol </span>
+<span class="r1">edin</span><span class="r2">)</span>
+<span class="r5">  ! test_play_sound_called </span><span class="r6">(</span><span class="r5">Modül ses çalmalı</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: test_load_and_state_change</span>
+<span class="r1">✗ fatmaselin_yuksel_220211041 </span><span class="r2">(</span><span class="r2">4</span><span class="r2">)</span><span class="r1"> - Selin Yüksel</span>
+<span class="r3">  ✓ test_has_photo </span><span class="r4">(</span><span class="r3">Fotoğraf dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_author </span><span class="r4">(</span><span class="r3">AUTHOR.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_title </span><span class="r4">(</span><span class="r3">TITLE.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_main_py </span><span class="r4">(</span><span class="r3">main.py dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_main_py_has_main_fn </span><span class="r4">(</span><span class="r3">main.py dosyasında main fonksiyonu olmalı | async def </span><span class="r4">main(</span><span class="r3">core: Core</span><span class="r4">)</span><span class="r3">:</span><span class="r4">)</span>
+<span class="r1">  ✗ test_requirements_installable </span><span class="r2">(</span><span class="r1">requirements.txt dosyasındaki paketler yüklenebilmeli</span><span class="r2">)</span><span class="r1">: </span><span class="r1">&#x27;utf-8&#x27;</span><span class="r1"> codec can&#x27;t decode </span>
+<span class="r1">byte </span><span class="r2">0xfc</span><span class="r1"> in position </span><span class="r2">282</span><span class="r1">: invalid start byte</span>
+<span class="r5">  ! test_load_and_state_change </span><span class="r6">(</span><span class="r5">Modül yüklenebilmeli ve durum belirtmeli</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: </span>
+<span class="r5">test_requirements_installable</span>
+<span class="r5">  ! test_send_message_not_called </span><span class="r6">(</span><span class="r5">Mesajlar artık görünmeyecek</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: </span>
+<span class="r5">test_requirements_installable</span>
+<span class="r5">  ! test_play_sound_called </span><span class="r6">(</span><span class="r5">Modül ses çalmalı</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: test_load_and_state_change</span>
+<span class="r1">✗ TuncayBoraKacar_220211006_ - TB K</span>
+<span class="r3">  ✓ test_has_photo </span><span class="r4">(</span><span class="r3">Fotoğraf dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_author </span><span class="r4">(</span><span class="r3">AUTHOR.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_title </span><span class="r4">(</span><span class="r3">TITLE.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_main_py </span><span class="r4">(</span><span class="r3">main.py dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_main_py_has_main_fn </span><span class="r4">(</span><span class="r3">main.py dosyasında main fonksiyonu olmalı | async def </span><span class="r4">main(</span><span class="r3">core: Core</span><span class="r4">)</span><span class="r3">:</span><span class="r4">)</span>
+<span class="r3">  ✓ test_requirements_installable </span><span class="r4">(</span><span class="r3">requirements.txt dosyasındaki paketler yüklenebilmeli</span><span class="r4">)</span>
+<span class="r3">  ✓ test_load_and_state_change </span><span class="r4">(</span><span class="r3">Modül yüklenebilmeli ve durum belirtmeli</span><span class="r4">)</span>
+<span class="r1">  ✗ test_send_message_not_called </span><span class="r2">(</span><span class="r1">Mesajlar artık görünmeyecek</span><span class="r2">)</span><span class="r1">: Modül yüklenirken hata oluştu. </span><span class="r2">(</span><span class="r1">log dosyalarını kontrol </span>
+<span class="r1">edin</span><span class="r2">)</span>
+<span class="r1">  ✗ test_play_sound_called </span><span class="r2">(</span><span class="r1">Modül ses çalmalı</span><span class="r2">)</span><span class="r1">: Modül yüklenirken hata oluştu. </span><span class="r2">(</span><span class="r1">log dosyalarını kontrol edin</span><span class="r2">)</span>
+<span class="r3">✓ hilal_celik_220211023 - Hilal ÇELİK</span>
+<span class="r3">✓ ozkan_ozarslan_220211010 - Özkan Özarslan</span>
+<span class="r3">✓ Eliforencik_220211039yz - elif örencik</span>
+<span class="r3">✓ Asli_Nergiz_220211011 - aslı nergiz</span>
+<span class="r3">✓ YAGMURNURKUCUKARSLAN_220211017 - Yağmur Küçükarslan</span>
+<span class="r1">✗ dilan_oksuz_220211004 - Dilan</span>
+<span class="r3">  ✓ test_has_photo </span><span class="r4">(</span><span class="r3">Fotoğraf dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_author </span><span class="r4">(</span><span class="r3">AUTHOR.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_title </span><span class="r4">(</span><span class="r3">TITLE.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_main_py </span><span class="r4">(</span><span class="r3">main.py dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_main_py_has_main_fn </span><span class="r4">(</span><span class="r3">main.py dosyasında main fonksiyonu olmalı | async def </span><span class="r4">main(</span><span class="r3">core: Core</span><span class="r4">)</span><span class="r3">:</span><span class="r4">)</span>
+<span class="r3">  ✓ test_requirements_installable </span><span class="r4">(</span><span class="r3">requirements.txt dosyasındaki paketler yüklenebilmeli</span><span class="r4">)</span>
+<span class="r1">  ✗ test_load_and_state_change </span><span class="r2">(</span><span class="r1">Modül yüklenebilmeli ve durum belirtmeli</span><span class="r2">)</span><span class="r1">: Modül durum belirmedi/değiştirmedi. </span>
+<span class="r2">[core.set_state()</span><span class="r1"> çağrılmadı</span><span class="r2">]</span>
+<span class="r3">  ✓ test_send_message_not_called </span><span class="r4">(</span><span class="r3">Mesajlar artık görünmeyecek</span><span class="r4">)</span>
+<span class="r5">  ! test_play_sound_called </span><span class="r6">(</span><span class="r5">Modül ses çalmalı</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: test_load_and_state_change</span>
+<span class="r1">✗ hasan_talha_topal_220211016 - Hasan Talha</span>
+<span class="r3">  ✓ test_has_photo </span><span class="r4">(</span><span class="r3">Fotoğraf dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_author </span><span class="r4">(</span><span class="r3">AUTHOR.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_title </span><span class="r4">(</span><span class="r3">TITLE.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_main_py </span><span class="r4">(</span><span class="r3">main.py dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_main_py_has_main_fn </span><span class="r4">(</span><span class="r3">main.py dosyasında main fonksiyonu olmalı | async def </span><span class="r4">main(</span><span class="r3">core: Core</span><span class="r4">)</span><span class="r3">:</span><span class="r4">)</span>
+<span class="r3">  ✓ test_requirements_installable </span><span class="r4">(</span><span class="r3">requirements.txt dosyasındaki paketler yüklenebilmeli</span><span class="r4">)</span>
+<span class="r1">  ✗ test_load_and_state_change </span><span class="r2">(</span><span class="r1">Modül yüklenebilmeli ve durum belirtmeli</span><span class="r2">)</span><span class="r1">: Modül durum belirmedi/değiştirmedi. </span>
+<span class="r2">[core.set_state()</span><span class="r1"> çağrılmadı</span><span class="r2">]</span>
+<span class="r3">  ✓ test_send_message_not_called </span><span class="r4">(</span><span class="r3">Mesajlar artık görünmeyecek</span><span class="r4">)</span>
+<span class="r5">  ! test_play_sound_called </span><span class="r6">(</span><span class="r5">Modül ses çalmalı</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: test_load_and_state_change</span>
+<span class="r1">✗ selin_yalcin_220211207 </span><span class="r2">(</span><span class="r2">3</span><span class="r2">)</span><span class="r1"> - Selin Yalçın</span>
+<span class="r3">  ✓ test_has_photo </span><span class="r4">(</span><span class="r3">Fotoğraf dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_author </span><span class="r4">(</span><span class="r3">AUTHOR.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_title </span><span class="r4">(</span><span class="r3">TITLE.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_main_py </span><span class="r4">(</span><span class="r3">main.py dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_main_py_has_main_fn </span><span class="r4">(</span><span class="r3">main.py dosyasında main fonksiyonu olmalı | async def </span><span class="r4">main(</span><span class="r3">core: Core</span><span class="r4">)</span><span class="r3">:</span><span class="r4">)</span>
+<span class="r3">  ✓ test_requirements_installable </span><span class="r4">(</span><span class="r3">requirements.txt dosyasındaki paketler yüklenebilmeli</span><span class="r4">)</span>
+<span class="r1">  ✗ test_load_and_state_change </span><span class="r2">(</span><span class="r1">Modül yüklenebilmeli ve durum belirtmeli</span><span class="r2">)</span><span class="r1">: Modül durum belirmedi/değiştirmedi. </span>
+<span class="r2">[core.set_state()</span><span class="r1"> çağrılmadı</span><span class="r2">]</span>
+<span class="r3">  ✓ test_send_message_not_called </span><span class="r4">(</span><span class="r3">Mesajlar artık görünmeyecek</span><span class="r4">)</span>
+<span class="r5">  ! test_play_sound_called </span><span class="r6">(</span><span class="r5">Modül ses çalmalı</span><span class="r6">)</span><span class="r5">: Çalıştırılmadı. Başarısız gereksinimler: test_load_and_state_change</span>
+<span class="r1">✗ zeynep </span><span class="r2">(</span><span class="r2">2</span><span class="r2">)</span><span class="r1"> - Zeynep İlhan</span>
+<span class="r1">  ✗ test_has_photo </span><span class="r2">(</span><span class="r1">Fotoğraf dosyası olmalı</span><span class="r2">)</span><span class="r1">: PHOTO.png fotoğrafı bulunamadı.</span>
+<span class="r3">  ✓ test_has_author </span><span class="r4">(</span><span class="r3">AUTHOR.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_title </span><span class="r4">(</span><span class="r3">TITLE.txt dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_has_main_py </span><span class="r4">(</span><span class="r3">main.py dosyası olmalı</span><span class="r4">)</span>
+<span class="r3">  ✓ test_main_py_has_main_fn </span><span class="r4">(</span><span class="r3">main.py dosyasında main fonksiyonu olmalı | async def </span><span class="r4">main(</span><span class="r3">core: Core</span><span class="r4">)</span><span class="r3">:</span><span class="r4">)</span>
+<span class="r3">  ✓ test_requirements_installable </span><span class="r4">(</span><span class="r3">requirements.txt dosyasındaki paketler yüklenebilmeli</span><span class="r4">)</span>
+<span class="r3">  ✓ test_load_and_state_change </span><span class="r4">(</span><span class="r3">Modül yüklenebilmeli ve durum belirtmeli</span><span class="r4">)</span>
+<span class="r3">  ✓ test_send_message_not_called </span><span class="r4">(</span><span class="r3">Mesajlar artık görünmeyecek</span><span class="r4">)</span>
+<span class="r1">  ✗ test_play_sound_called </span><span class="r2">(</span><span class="r1">Modül ses çalmalı</span><span class="r2">)</span><span class="r1">: Modül ses çalmadı. </span><span class="r2">[core.play_sound()</span><span class="r1"> çağrılmadı</span><span class="r2">]</span>
+</code></pre>
+</body>
+</html>
