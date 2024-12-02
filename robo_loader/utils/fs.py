@@ -6,7 +6,10 @@ from typing import Callable
 
 def rmrf(path: Path):
     try:
-        shutil.rmtree(path)
+        if path.is_file():
+            path.unlink()
+        else:
+            shutil.rmtree(path)
         return
     except PermissionError:
         pass
@@ -19,7 +22,7 @@ def rmrf(path: Path):
             fn()
 
     if not path.is_dir():
-        path.unlink()
+        safe_rm(path.unlink)
         return
 
     to_delete = []

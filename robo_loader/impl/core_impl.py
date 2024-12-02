@@ -103,6 +103,13 @@ class CoreImpl:
         """Internal"""
         self._dispatch_command("Mesaj", message)
 
+    async def get_rgb(self):
+        return (
+            await self._get_input("Red"),
+            await self._get_input("Green"),
+            await self._get_input("Blue"),
+        )
+
     async def set_state(self, state: str) -> None:
         """Yapay zekanızın durumunu günceller.
         Robotun monitöründe herkesin yapay zekasının durumu gösterilir.
@@ -118,8 +125,7 @@ class CoreImpl:
 
     async def _get_input(self, label: str) -> Any:
         await asyncio.sleep(0.2)
-        value = self.values_shm.get(label, 0)
-        return value
+        return self.values_shm.get(label, 0)
 
     def _dispatch_command(self, verb: CommandVerb, value: Any) -> None:
         self.command_queue.put(

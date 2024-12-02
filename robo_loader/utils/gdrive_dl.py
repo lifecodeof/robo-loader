@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
@@ -25,7 +26,7 @@ def main():
     #     file.unlink()
 
     folder_id = (
-        "1iicnd54klaLTvISbZe_LLOT2vNOOO6trqh-GCwgn8BX6wH3edbURcNAfaB73Aj3V1HlLt1x6"
+        "13Gx4livXMRLs7BBqT3H6BTeJE6YLE7zCddBSnnevaGzgBxvaTQw0jueorsMsd9-iW2n5gwg6"
     )
 
     # Authenticate and create the PyDrive client
@@ -35,12 +36,28 @@ def main():
     # gauth.SaveCredentialsFile("creds")
     drive = GoogleDrive(gauth)
 
-    file_list = drive.ListFile(
+    gdrive_file_iter = drive.ListFile(
         {"q": f"'{folder_id}' in parents and trashed=false"}
     ).GetList()
+    gdrive_file_list = list(gdrive_file_iter)
 
-    new_files: list[str] = []
-    for file in track(list(file_list), "[green]Downloading files..."):
+    user_files = {}
+    for file in track(gdrive_file_list, "[green]Comparing files..."):
+        username = file["lastModifyingUserName"]
+        if username not in user_files:
+            user_files[username] = file
+        else:
+            existing_file_mod_date = datetime.fromisoformat(
+                user_files[username]["modifiedDate"]
+            )
+            current_file_mod_date = datetime.fromisoformat(file["modifiedDate"])
+            if current_file_mod_date > existing_file_mod_date:
+                user_files[username] = file
+
+    files = list(user_files.values())
+    downloaded_files: list[str] = list()
+
+    for file in track(gdrive_file_list, "[green]Downloading files..."):
         file_name = file["title"]
         local_path = destination / file_name
         if local_path.exists():
@@ -52,14 +69,14 @@ def main():
                 local_path.unlink()
 
         file.GetContentFile(str(local_path))
-        new_files.append(file_name)
+        downloaded_files.append(file_name)
 
-    if new_files:
-        rich.print(f"[green]Downloaded {new_files!r} new files")
+    if downloaded_files:
+        rich.print(f"[green]Downloaded: {downloaded_files!r}")
     else:
         rich.print(f"[yellow]No new files to download")
 
-    gdrive_filenames = [file["title"] for file in file_list]
+    gdrive_filenames = [file["title"] for file in files]
     for file in track(
         list(destination.iterdir()),
         "[green]Deleting old files...",

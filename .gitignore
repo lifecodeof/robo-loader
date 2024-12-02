@@ -162,6 +162,7 @@ cython_debug/
 #.idea/
 
 venvs/
+venvs.old/
 gdrive/
 gdrive.old/
 logs/

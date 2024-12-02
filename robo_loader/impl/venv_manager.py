@@ -5,6 +5,7 @@ import virtualenv
 from loguru import logger
 import runpy
 from robo_loader import ROOT_PATH
+from robo_loader.utils.fs import rmrf
 
 # REQUIREMENT_CORRECTIONS = {
 #     "os": None,
@@ -35,10 +36,17 @@ class VenvManager:
 
     def ensure_venv(self) -> None:
         venv_path = self.venv_path.absolute()
-        if not venv_path.exists():
-            logger.info(f"Creating venv with {sys.executable}")
-            virtualenv.cli_run([str(venv_path), "--python", sys.executable])
-            logger.info(f"Created venv: {self.venv_name}")
+        COMPLETE_FLAG = self.venv_path / ".creation_complete"
+        if COMPLETE_FLAG.exists():
+            return
+
+        if venv_path.exists():
+            rmrf(venv_path)
+
+        logger.info(f"Creating venv with {sys.executable}")
+        virtualenv.cli_run([str(venv_path), "--python", sys.executable])
+        COMPLETE_FLAG.touch()
+        logger.info(f"Created venv: {self.venv_name}")
 
     @property
     def interpreter_path(self) -> Path:

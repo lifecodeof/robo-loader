@@ -15,6 +15,9 @@ TrasportValues = TypedDict(
         "Titreşim": float,
         "Yağmur": float,
         "Yakınlık": float,
+        "Red": float,
+        "Green": float,
+        "Blue": float,
     },
 )
 
@@ -43,6 +46,9 @@ def parse_serial_line(line: str) -> TrasportValues | None:
                 "Titreşim": incoming["hareket"],
                 "Yağmur": incoming["suSeviyesi"],
                 "Yakınlık": incoming["mesafe"],
+                "Red": incoming["Red"],
+                "Green": incoming["Green"],
+                "Blue": incoming["Blue"],
             }
         )
         with open("debug.txt", "w") as f:
