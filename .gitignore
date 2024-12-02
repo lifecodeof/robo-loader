@@ -168,3 +168,4 @@ logs/
 modules/
 client_secrets.json
 creds
+share/
