@@ -1,29 +1,42 @@
 from contextlib import suppress
 import multiprocessing
 from pathlib import Path
-from queue import Empty, Queue
+from queue import Empty
 import threading
 
 from loguru import logger
+from robo_loader.impl import transport
 from robo_loader.server.module_thread import ModuleThread, Statuses
 from robo_loader.impl.module_process import InfoQueue
 from serial import Serial
 
 
 class SerialReaderThread(threading.Thread):
-    def __init__(self, serial: Serial, cancel_event: threading.Event) -> None:
+    def __init__(
+        self, serial: Serial, cancel_event: threading.Event, mtm: "ModuleThreadManager"
+    ) -> None:
         super().__init__()
         self.serial = serial
-        self.serial_in = Queue()
-        self.serial_out = Queue()
+        self.serial_buffer = b""
+        self.serial_in = multiprocessing.Queue()
         self.cancel_event = cancel_event
+        self.values_queue = multiprocessing.Queue()
+        self.values = {}
+        self.mtm = mtm
 
     def run(self) -> None:
         while not self.cancel_event.is_set():
             if self.serial.in_waiting > 0:
                 buf = self.serial.read_all()
                 if buf:
-                    self.serial_out.put(buf)
+                    self.serial_buffer += buf
+                    if b"\n" in self.serial_buffer:
+                        line, self.serial_buffer = self.serial_buffer.split(b"\n", 1)
+                        values = transport.parse_serial_line(line.decode("utf-8"))
+                        self.values_queue.put(values)
+                        self.values = values
+                        logger.info(f"SerialReaderThread values: {values}")
+                        self.mtm.set_values(values)
 
             try:
                 data = self.serial_in.get_nowait()
@@ -53,7 +66,7 @@ class ModuleThreadManager:
     def __init__(self, serial: Serial | None) -> None:
         self.cancel_event = threading.Event()
         self.serial_reader_thread = serial and SerialReaderThread(
-            serial, self.cancel_event
+            serial, self.cancel_event, self
         )
 
         self.info_queue = multiprocessing.Queue()
@@ -61,7 +74,10 @@ class ModuleThreadManager:
 
         self.threads: list[ModuleThread] = []
 
-    def set_values(self, values: dict) -> None:
+    def set_values(self, values: dict | None) -> None:
+        if values is None:
+            return
+
         for thread in self.threads:
             thread.set_values(values)
 
@@ -79,12 +95,13 @@ class ModuleThreadManager:
 
     def add_thread(self, module_paths: list[Path]):
         serial_in = self.serial_reader_thread and self.serial_reader_thread.serial_in
-        serial_out = self.serial_reader_thread and self.serial_reader_thread.serial_out
+        values_queue = (
+            self.serial_reader_thread and self.serial_reader_thread.values_queue
+        )
 
         thread = ModuleThread(
             module_paths=module_paths,
             serial_in=serial_in,
-            serial_out=serial_out,
             info_queue=self.info_queue,
         )
 

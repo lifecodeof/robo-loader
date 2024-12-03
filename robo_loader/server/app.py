@@ -61,12 +61,9 @@ app = FastAPI(lifespan=lifespan)
 def get_statuses(mtm: Mtm):
     return mtm.get_statuses()
 
-
-@app.post("/api/set_data")
-async def set_data(request: Request, mtm: Mtm):
-    data = await request.json()
-    mtm.set_values(data)
-
+@app.get("/api/values")
+def get_values(mtm: Mtm):
+    return mtm.serial_reader_thread.values
 
 @app.get("/api/photo.png")
 def get_photo(module_name: str):

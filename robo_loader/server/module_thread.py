@@ -25,13 +25,11 @@ class ModuleThread(threading.Thread):
         self,
         module_paths: list[Path],
         serial_in: "queue.Queue[bytes] | None" = None,
-        serial_out: "queue.Queue[bytes] | None" = None,
         info_queue: "multiprocessing.Queue[tuple[str, ModuleInfo]] | None" = None,
     ):
         super().__init__()
         self.module_paths = module_paths
         self.serial_in = serial_in
-        self.serial_out = serial_out
         self.info_queue = info_queue
 
         self.stop_event = multiprocessing.Event()
@@ -53,7 +51,6 @@ class ModuleThread(threading.Thread):
             ignore_deaths=True,
             values_queue=self._values_queue,
             serial_in=self.serial_in,
-            serial_out=self.serial_out,
             info_queue=self.info_queue,
         ).load()
 

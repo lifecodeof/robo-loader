@@ -26,7 +26,7 @@ def main():
     #     file.unlink()
 
     folder_id = (
-        "13Gx4livXMRLs7BBqT3H6BTeJE6YLE7zCddBSnnevaGzgBxvaTQw0jueorsMsd9-iW2n5gwg6"
+        "1iicnd54klaLTvISbZe_LLOT2vNOOO6trqh-GCwgn8BX6wH3edbURcNAfaB73Aj3V1HlLt1x6"
     )
 
     # Authenticate and create the PyDrive client
@@ -57,7 +57,7 @@ def main():
     files = list(user_files.values())
     downloaded_files: list[str] = list()
 
-    for file in track(gdrive_file_list, "[green]Downloading files..."):
+    for file in track(files, "[green]Downloading files..."):
         file_name = file["title"]
         local_path = destination / file_name
         if local_path.exists():
@@ -76,14 +76,14 @@ def main():
     else:
         rich.print(f"[yellow]No new files to download")
 
-    # gdrive_filenames = [file["title"] for file in files]
-    # for file in track(
-    #     list(destination.iterdir()),
-    #     "[green]Deleting old files...",
-    # ):
-    #     if file.name not in gdrive_filenames:
-    #         file.unlink()
-    #         rich.print(f"[red]Deleted {file.name!r}")
+    gdrive_filenames = [file["title"] for file in files]
+    for file in track(
+        list(destination.iterdir()),
+        "[green]Deleting old files...",
+    ):
+        if file.name not in gdrive_filenames:
+            file.unlink()
+            rich.print(f"[red]Deleted {file.name!r}")
 
 
 if __name__ == "__main__":
