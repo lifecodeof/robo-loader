@@ -15,7 +15,7 @@ export default function SingleModuleDisplay({ status }: { status: Status }) {
       <figure>
         <img src={aiImage} className="h-80 w-60" />
       </figure>
-      <div className="card-body min-w-[30rem] text-start">
+      <div className="card-body basis-0 text-start">
         <h2 className="card-title">{status.author}</h2>
         <h2 className="card-title !text-lg">{status.title}</h2>
         <p>{status.content}</p>

@@ -76,14 +76,14 @@ def main():
     else:
         rich.print(f"[yellow]No new files to download")
 
-    gdrive_filenames = [file["title"] for file in files]
-    for file in track(
-        list(destination.iterdir()),
-        "[green]Deleting old files...",
-    ):
-        if file.name not in gdrive_filenames:
-            file.unlink()
-            rich.print(f"[red]Deleted {file.name!r}")
+    # gdrive_filenames = [file["title"] for file in files]
+    # for file in track(
+    #     list(destination.iterdir()),
+    #     "[green]Deleting old files...",
+    # ):
+    #     if file.name not in gdrive_filenames:
+    #         file.unlink()
+    #         rich.print(f"[red]Deleted {file.name!r}")
 
 
 if __name__ == "__main__":
